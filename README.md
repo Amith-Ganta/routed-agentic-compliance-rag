@@ -8,6 +8,18 @@ Status: in progress
 
 Numbers will appear here only after a committed eval script prints them and stores the raw output under `evals/reports/`.
 
+## Evaluation
+
+The evaluation harness measures answer relevancy and correctness with DeepEval over the retriever goldens.
+
+DeepEval is judged by a custom DeepEvalBaseLLM that calls DeepSeek through LiteLLM, so the same local generation stack stays in place for both answering and evaluation.
+
+Run the harness with `uv run python -m evals.run_eval`.
+
+Run the regression gate with `uv run python -m evals.gate`.
+
+The harness writes results to `evals/reports/latest.json`, and no scores are quoted until that file exists.
+
 ## Retrieval engine
 
 Phase 2 adds a routed retrieval layer on top of the existing dense baseline.

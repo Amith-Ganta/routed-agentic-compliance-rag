@@ -23,5 +23,6 @@ package = true
 
 [dependency-groups]
 dev = [
+    "deepeval>=4.2.0",
     "pytest>=9.1.1",
 ]
