@@ -4,6 +4,14 @@ Multi-tenant agentic RAG platform for routing, hybrid retrieval, bounded self-co
 
 Status: in progress
 
+## Corpus and domain
+
+The corpus covers cloud compliance and secure platform governance: how regulatory controls such as GDPR, SOC 2, and PCI DSS are enforced on cloud infrastructure through IAM, encryption, audit logging, Kubernetes network policy, secrets management, and infrastructure as code. The text is deliberately dense with exact identifiers (control names, article rights, config flags), which gives the sparse BM25 retriever and the dense retriever genuinely different strengths and makes hybrid fusion worth measuring.
+
+The source documents live in `data/corpus/` and the retriever goldens in `goldens/retriever_goldens.json`. Each golden's `context` field is a sentence copied verbatim from its source file, so the evaluation measures grounding against real corpus text rather than paraphrase.
+
+The dense index is not committed. Rebuild it from the corpus with `uv run python -m src.rag.ingest` before running the app or the eval harness. This step needs a live `OPENAI_API_KEY` because it calls the embedding model.
+
 ## Results
 
 Numbers will appear here only after a committed eval script prints them and stores the raw output under `evals/reports/`.

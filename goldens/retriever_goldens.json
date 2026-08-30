@@ -1,87 +1,86 @@
 [
   {
     "id": "g1",
-    "source": "01-retrieval-augmented-generation.md",
-    "input": "What is retrieval augmented generation?",
-    "expected_output": "RAG combines retrieval and generation so a model answers using retrieved context.",
-    "context": "Retrieval augmented generation combines a search step with a generation step."
+    "source": "01-access-control-iam.md",
+    "input": "What does least privilege mean in IAM?",
+    "expected_output": "Least privilege means each identity gets only the permissions it needs to do its task.",
+    "context": "The principle of least privilege means each identity is granted only the permissions it needs to perform its task and nothing more."
   },
   {
     "id": "g2",
-    "source": "02-chunking-strategies.md",
-    "input": "Why do we chunk documents before indexing?",
-    "expected_output": "Chunking breaks long documents into smaller pieces so they can be retrieved precisely.",
-    "context": "Chunking breaks long documents into smaller pieces before indexing."
+    "source": "02-encryption-at-rest.md",
+    "input": "What is encryption at rest?",
+    "expected_output": "Encryption at rest keeps stored data encrypted on disk so stolen media cannot be read without keys.",
+    "context": "Encryption at rest protects stored data by keeping it in ciphertext on disk so that a stolen volume or backup cannot be read without the keys."
   },
   {
     "id": "g3",
-    "source": "03-embeddings.md",
-    "input": "What do embeddings do in a RAG system?",
-    "expected_output": "Embeddings convert text into vectors that capture semantic meaning.",
-    "context": "Embeddings convert text into vectors that capture semantic meaning."
+    "source": "03-encryption-in-transit.md",
+    "input": "What does encryption in transit protect against?",
+    "expected_output": "It protects data moving over the network from being read or altered.",
+    "context": "Encryption in transit uses TLS to protect data as it moves between services so that it cannot be read or altered on the network."
   },
   {
     "id": "g4",
-    "source": "04-reranking.md",
-    "input": "What is reranking used for?",
-    "expected_output": "Reranking reorders retrieved candidates with a stronger model to improve precision.",
-    "context": "Reranking takes a set of candidate passages from a first-stage retriever and reorders them with a stronger model."
+    "source": "04-audit-logging.md",
+    "input": "Why are audit logs required for compliance?",
+    "expected_output": "They are needed to investigate incidents and prove compliance to an auditor.",
+    "context": "Audit logs record who did what and when, which is required to investigate incidents and to prove compliance to an auditor."
   },
   {
     "id": "g5",
-    "source": "05-faithfulness.md",
-    "input": "What does faithfulness measure?",
-    "expected_output": "It measures whether the answer stays grounded in the provided context.",
-    "context": "Faithfulness measures whether the answer stays grounded in the provided context."
+    "source": "05-gdpr-data-subject-rights.md",
+    "input": "What rights does a data subject have under GDPR?",
+    "expected_output": "A data subject can access personal data and request erasure when it is no longer needed.",
+    "context": "Under GDPR a data subject has the right to access their personal data and the right to have it erased when it is no longer needed."
   },
   {
     "id": "g6",
-    "source": "06-hallucination.md",
-    "input": "What is hallucination?",
-    "expected_output": "Hallucination is when a model produces plausible but false or unsupported information.",
-    "context": "Hallucination happens when a language model produces information that sounds plausible but is false or unsupported."
+    "source": "06-data-residency.md",
+    "input": "What do data residency rules require?",
+    "expected_output": "They require personal data to stay stored and processed in a specific geographic region.",
+    "context": "Data residency rules require that personal data is stored and processed within a specific geographic region defined by law or contract."
   },
   {
     "id": "g7",
-    "source": "07-context-precision-recall.md",
-    "input": "What is context recall?",
-    "expected_output": "Context recall asks whether the relevant supporting facts were retrieved.",
-    "context": "Context recall asks whether the relevant supporting facts were retrieved at all."
+    "source": "07-soc2-trust-criteria.md",
+    "input": "What does SOC 2 evaluate?",
+    "expected_output": "SOC 2 evaluates a service organization against security, availability, processing integrity, confidentiality, and privacy criteria.",
+    "context": "SOC 2 evaluates a service organization against trust criteria for security, availability, processing integrity, confidentiality, and privacy."
   },
   {
     "id": "g8",
-    "source": "07-context-precision-recall.md",
-    "input": "What is context precision?",
-    "expected_output": "Context precision asks whether the retrieved set contains mostly useful material.",
-    "context": "Context precision asks whether the retrieved set contains mostly useful material instead of noise."
+    "source": "08-pci-dss-cardholder-data.md",
+    "input": "How does PCI DSS treat stored cardholder data?",
+    "expected_output": "It allows stored cardholder data only when necessary and requires it to be rendered unreadable.",
+    "context": "PCI DSS requires that cardholder data such as the primary account number is stored only when necessary and is rendered unreadable wherever it is kept."
   },
   {
     "id": "g9",
-    "source": "08-prompt-injection.md",
-    "input": "What is prompt injection?",
-    "expected_output": "It is when retrieved or user text tries to override the system instructions.",
-    "context": "Prompt injection is an attack where retrieved or user supplied text tries to override the system instructions."
+    "source": "09-secrets-management.md",
+    "input": "Where should secrets be stored?",
+    "expected_output": "Secrets should be stored in a dedicated vault, not in source code or plain configuration files.",
+    "context": "Secrets management stores credentials such as API keys and database passwords in a dedicated vault instead of in source code or plain configuration files."
   },
   {
     "id": "g10",
-    "source": "09-guardrails.md",
-    "input": "What are guardrails?",
-    "expected_output": "Guardrails are rules that keep a language model inside allowed behavior.",
-    "context": "Guardrails are rules that keep a language model inside allowed behavior."
+    "source": "10-kubernetes-network-policy.md",
+    "input": "What does a Kubernetes network policy control?",
+    "expected_output": "It controls which pods can talk to each other.",
+    "context": "A Kubernetes network policy restricts which pods can talk to each other, so a compromised pod cannot reach services it was never meant to contact."
   },
   {
     "id": "g11",
-    "source": "10-agent-evaluation.md",
-    "input": "What does agent evaluation check?",
-    "expected_output": "It checks whether a system can complete a task reliably, not just whether one answer looks good.",
-    "context": "Agent evaluation checks whether a system can complete a task reliably, not just whether a single answer looks good."
+    "source": "11-infrastructure-as-code-drift.md",
+    "input": "What is configuration drift in infrastructure as code?",
+    "expected_output": "It is when live cloud infrastructure no longer matches the Terraform state.",
+    "context": "Configuration drift happens when the live cloud infrastructure no longer matches the Terraform state, which can silently reintroduce insecure settings."
   },
   {
     "id": "g12",
-    "source": "11-cost-latency-tradeoffs.md",
-    "input": "Why do cost and latency matter in AI systems?",
-    "expected_output": "They matter because higher quality models may be too expensive or too slow.",
-    "context": "Cost and latency are critical metrics for applied AI systems."
+    "source": "12-shared-responsibility-model.md",
+    "input": "Who is responsible for what under the shared responsibility model?",
+    "expected_output": "The provider secures the underlying infrastructure, while the customer secures data and access configuration.",
+    "context": "Under the shared responsibility model the cloud provider secures the underlying infrastructure while the customer remains responsible for securing their data and access configuration."
   }
 ]
-
