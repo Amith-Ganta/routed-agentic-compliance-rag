@@ -14,7 +14,39 @@ The dense index is not committed. Rebuild it from the corpus with `uv run python
 
 ## Results
 
-Numbers will appear here only after a committed eval script prints them and stores the raw output under `evals/reports/`.
+Measured over the 12 retriever goldens in `goldens/retriever_goldens.json` by
+`evals/run_eval.py`. Every number below is copied from the committed report
+`evals/reports/latest.json`, which the harness writes on each run. Judge model:
+`deepseek/deepseek-chat` through LiteLLM, wrapped as a custom `DeepEvalBaseLLM`.
+
+| Metric | Value (12 cases) |
+| --- | --- |
+| Mean answer relevancy | 0.986 |
+| Mean correctness (GEval) | 0.858 |
+| Answer relevancy pass rate (threshold 0.7) | 100.0% |
+| Correctness pass rate (threshold 0.5) | 100.0% |
+
+The regression gate `evals/gate.py` reads the same report and enforces floors
+of 0.6 mean relevancy and 0.5 mean correctness. On this run it printed
+`PASS mean_relevancy=0.986 mean_correctness=0.858` and exited zero.
+
+Honest reading of this run. The goldens are a small, self-authored set (12
+cases) written by the same author as the pipeline, so this shows the pipeline
+answers these compliance questions correctly and relevantly, not a general
+guarantee. On this run the router classified all 12 questions to the web route
+rather than local vector retrieval, so these scores exercise the routing,
+generation, self-correction, and judging path end to end, but do not on their
+own measure the local hybrid retriever over the corpus. A golden set that the
+router sends to the vector route would be needed to score dense, sparse, and
+fusion retrieval independently.
+
+To reproduce:
+
+```
+uv run python -m src.rag.ingest
+uv run python -m evals.run_eval
+uv run python -m evals.gate
+```
 
 ## Evaluation
 

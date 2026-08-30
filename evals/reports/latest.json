@@ -1,0 +1,191 @@
+{
+  "run": "phase3-eval",
+  "judge_model": "deepseek/deepseek-chat",
+  "metrics": {
+    "answer_relevancy": {
+      "threshold": 0.7,
+      "model": "deepseek/deepseek-chat"
+    },
+    "correctness": {
+      "threshold": 0.5,
+      "model": "deepseek/deepseek-chat"
+    }
+  },
+  "aggregates": {
+    "count": 12,
+    "mean_relevancy": 0.9861111111111112,
+    "mean_correctness": 0.8583333333333334,
+    "pass_rate_relevancy": 1.0,
+    "pass_rate_correctness": 1.0
+  },
+  "cases": [
+    {
+      "id": "g1",
+      "source": "01-access-control-iam.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about least privilege in IAM, with no irrelevant statements detected.",
+      "relevancy_error": "",
+      "correctness_score": 1.0,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output correctly conveys the core meaning of least privilege, matching the Expected Output's key fact that identities receive only necessary permissions. It adds relevant context about reducing attack surfa...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g2",
+      "source": "02-encryption-at-rest.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about encryption at rest, with no irrelevant statements.",
+      "relevancy_error": "",
+      "correctness_score": 1.0,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output fully covers the key facts from the Expected Output: it explains that encryption at rest protects stored data, mentions encoding on storage devices, and emphasizes that data cannot be read without th...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g3",
+      "source": "03-encryption-in-transit.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about what encryption in transit protects against, with no irrelevant statements.",
+      "relevancy_error": "",
+      "correctness_score": 1.0,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output accurately captures the core protection of encryption in transit: preventing unauthorized reading and alteration of data during transmission. It explicitly mentions interception, eavesdropping, and i...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g4",
+      "source": "04-audit-logging.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about why audit logs are required for compliance, with no irrelevant statements detected.",
+      "relevancy_error": "",
+      "correctness_score": 0.6,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output thoroughly explains the compliance documentation and evidence role of audit logs, but it omits the key fact about investigating incidents, which is central to the Expected Output. It also does not ex...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g5",
+      "source": "05-gdpr-data-subject-rights.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output fully addresses the input question about GDPR data subject rights, with no irrelevant statements detected.",
+      "relevancy_error": "",
+      "correctness_score": 0.8,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output provides a comprehensive list of GDPR rights, including the right to access and erasure, which directly covers the key facts in the Expected Output. However, it adds many additional rights and detail...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g6",
+      "source": "06-data-residency.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and fully addresses the input question about data residency rules, with no irrelevant statements detected.",
+      "relevancy_error": "",
+      "correctness_score": 0.8,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output correctly captures the core requirement that data must be stored and processed within a specific geographic boundary, which aligns with the Expected Output's key fact. It also adds relevant details a...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g7",
+      "source": "07-soc2-trust-criteria.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about what SOC 2 evaluates, with no irrelevant statements detected.",
+      "relevancy_error": "",
+      "correctness_score": 0.9,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output accurately lists all five Trust Services Criteria (security, availability, processing integrity, confidentiality, privacy) and correctly states that security is mandatory while the others are conditi...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g8",
+      "source": "08-pci-dss-cardholder-data.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about PCI DSS treatment of stored cardholder data, with no irrelevant statements detected.",
+      "relevancy_error": "",
+      "correctness_score": 1.0,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output comprehensively covers the key facts from the Expected Output: it explicitly states that storage is allowed only when necessary (for legitimate legal, regulatory, or business reasons) and that stored...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g9",
+      "source": "09-secrets-management.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the question of where secrets should be stored, with no irrelevant statements.",
+      "relevancy_error": "",
+      "correctness_score": 0.7,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output provides specific examples of secrets management systems (Vault, AWS, CI/CD tooling) and mentions storing encrypted in git, which aligns with the general principle of using a dedicated vault. However...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g10",
+      "source": "10-kubernetes-network-policy.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 0.8333333333333334,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 0.83 because the output mostly correctly explains that a Kubernetes network policy controls traffic between pods and from external sources, but includes one vague statement ('It creates necessary segments...",
+      "relevancy_error": "",
+      "correctness_score": 1.0,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output correctly identifies that network policies control pod-to-pod communication, which is the key fact in the Expected Output. It also provides additional accurate details about ingress/egress and protoc...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g11",
+      "source": "11-infrastructure-as-code-drift.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about configuration drift in infrastructure as code, with no irrelevant statements.",
+      "relevancy_error": "",
+      "correctness_score": 0.6,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output provides a broader definition of configuration drift, mentioning undocumented changes and misalignment between current state and IaC configuration. However, it does not explicitly mention 'Terraform ...",
+      "correctness_error": ""
+    },
+    {
+      "id": "g12",
+      "source": "12-shared-responsibility-model.md",
+      "route": "web",
+      "retries_used": 0,
+      "relevancy_score": 1.0,
+      "relevancy_passed": true,
+      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about responsibilities under the shared responsibility model, with no irrelevant statements detected.",
+      "relevancy_error": "",
+      "correctness_score": 0.9,
+      "correctness_passed": true,
+      "correctness_reason": "The Actual Output correctly identifies the provider's responsibility for the underlying infrastructure and the customer's responsibility for data and access configuration, which are the key facts in the Expected Outpu...",
+      "correctness_error": ""
+    }
+  ]
+}
