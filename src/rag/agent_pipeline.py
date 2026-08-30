@@ -40,7 +40,22 @@ def _document_sources(docs: list[Document]) -> list[str]:
     return sources
 
 
-def _generate(question: str, contexts: list[Document], feedback: str | None = None) -> str:
+def _usage_dict(response: Any) -> dict[str, int]:
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return {"prompt": 0, "completion": 0, "total": 0}
+    if isinstance(usage, dict):
+        prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+        completion_tokens = int(usage.get("completion_tokens", 0) or 0)
+        total_tokens = int(usage.get("total_tokens", 0) or 0)
+    else:
+        prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+        completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+        total_tokens = int(getattr(usage, "total_tokens", 0) or 0)
+    return {"prompt": prompt_tokens, "completion": completion_tokens, "total": total_tokens}
+
+
+def _generate(question: str, contexts: list[Document], feedback: str | None = None) -> tuple[str, dict[str, int]]:
     context_text = "\n\n".join(doc.page_content for doc in contexts)
     system_content = "Answer only from the provided context. If the context is insufficient, say you do not know."
     if feedback:
@@ -55,10 +70,10 @@ def _generate(question: str, contexts: list[Document], feedback: str | None = No
         api_key=get_deepseek_api_key(),
         temperature=0,
     )
-    return response.choices[0].message.content or ""
+    return response.choices[0].message.content or "", _usage_dict(response)
 
 
-def _self_check(question: str, answer: str, contexts: list[Document]) -> dict[str, Any]:
+def _self_check(question: str, answer: str, contexts: list[Document]) -> tuple[dict[str, Any], dict[str, int]]:
     context_text = "\n\n".join(doc.page_content for doc in contexts)
     messages = [
         {
@@ -78,22 +93,27 @@ def _self_check(question: str, answer: str, contexts: list[Document]) -> dict[st
         response_format={"type": "json_object"},
     )
     content = response.choices[0].message.content or "{}"
-    return _safe_parse_json(content)
+    return _safe_parse_json(content), _usage_dict(response)
 
 
-def _run_self_check(question: str, answer: str, contexts: list[Document]) -> tuple[bool, str, str]:
+def _run_self_check(question: str, answer: str, contexts: list[Document]) -> tuple[bool, bool, str, dict[str, int]]:
+    usage = {"prompt": 0, "completion": 0, "total": 0}
     for _ in range(2):
-        parsed = _self_check(question, answer, contexts)
+        parsed, check_usage = _self_check(question, answer, contexts)
+        usage["prompt"] += check_usage["prompt"]
+        usage["completion"] += check_usage["completion"]
+        usage["total"] += check_usage["total"]
         grounded = bool(parsed.get("grounded", False))
         answers_question = bool(parsed.get("answers_question", False))
         feedback = str(parsed.get("feedback", "")).strip()
         if feedback or grounded or answers_question:
-            return grounded, answers_question, feedback
-    return False, False, "fallback after JSON parse failure"
+            return grounded, answers_question, feedback, usage
+    return False, False, "fallback after JSON parse failure", usage
 
 
 def invoke(question: str, top_k: int = RETRIEVER_TOP_K) -> dict[str, Any]:
     trace: list[str] = []
+    usage = {"prompt": 0, "completion": 0, "total": 0}
     decision = route_query(question)
     route = decision.route
     trace.append(f"route={route}: {decision.reason}")
@@ -118,15 +138,27 @@ def invoke(question: str, top_k: int = RETRIEVER_TOP_K) -> dict[str, Any]:
         trace.append("retrieval completed")
 
     retries_used = 0
-    answer = _generate(question, reranked_docs)
-    grounded, answers_question, feedback = _run_self_check(question, answer, reranked_docs)
+    answer, generate_usage = _generate(question, reranked_docs)
+    usage["prompt"] += generate_usage["prompt"]
+    usage["completion"] += generate_usage["completion"]
+    usage["total"] += generate_usage["total"]
+    grounded, answers_question, feedback, check_usage = _run_self_check(question, answer, reranked_docs)
+    usage["prompt"] += check_usage["prompt"]
+    usage["completion"] += check_usage["completion"]
+    usage["total"] += check_usage["total"]
     trace.append(f"self-check grounded={grounded} answers_question={answers_question}")
 
     while retries_used < 2 and not (grounded and answers_question):
         retries_used += 1
         trace.append(f"retry={retries_used}: {feedback or 'self-check failed'}")
-        answer = _generate(question, reranked_docs, feedback=feedback or "Improve grounding and answer completeness.")
-        grounded, answers_question, feedback = _run_self_check(question, answer, reranked_docs)
+        answer, generate_usage = _generate(question, reranked_docs, feedback=feedback or "Improve grounding and answer completeness.")
+        usage["prompt"] += generate_usage["prompt"]
+        usage["completion"] += generate_usage["completion"]
+        usage["total"] += generate_usage["total"]
+        grounded, answers_question, feedback, check_usage = _run_self_check(question, answer, reranked_docs)
+        usage["prompt"] += check_usage["prompt"]
+        usage["completion"] += check_usage["completion"]
+        usage["total"] += check_usage["total"]
         trace.append(f"self-check grounded={grounded} answers_question={answers_question}")
 
     return {
@@ -136,6 +168,7 @@ def invoke(question: str, top_k: int = RETRIEVER_TOP_K) -> dict[str, Any]:
         "sources": _document_sources(reranked_docs),
         "retries_used": retries_used,
         "trace": trace,
+        "usage": usage,
     }
 
 

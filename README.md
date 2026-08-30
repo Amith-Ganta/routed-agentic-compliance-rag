@@ -79,3 +79,34 @@ Phase 2 adds a routed retrieval layer on top of the existing dense baseline.
 - Generation and self-checking are both handled by DeepSeek, with a bounded retry loop that can revise answers when the judge says the draft is not grounded or incomplete.
 
 This section describes the architecture only. Evaluation metrics will be added later by the eval harness.
+
+## Orchestration
+
+Phase 3 wraps the retrieval engine in a bounded LangGraph state machine
+(`src/rag/orchestrator.py`). A rule based supervisor drives two specialist
+nodes, an answer node that calls the engine once and a refine node that retries
+with exponential backoff, plus a check node that sets a grounding verdict. The
+supervisor increments a turn counter on every decision and routes to the end
+state once the turn cap is reached, so the graph cannot loop forever by
+construction. Per thread checkpointing uses a LangGraph `MemorySaver` keyed on
+`thread_id`, and token usage from every DeepSeek call is accumulated into the
+run state so each run reports its own cost.
+
+The design targets three acceptance criteria: the graph completes within a
+fixed turn cap, retries stay bounded and backed off, and token usage is
+captured per run.
+
+One committed run is recorded in `evals/reports/orchestration_run.json`,
+produced by `scripts/orchestration_demo.py`. On that run the graph settled in
+2 turns with 0 refine retries, following the path
+`supervisor -> answer -> check -> supervisor -> end`, and reported 9,270 total
+tokens for the run. Because the router sends this question to the live web
+route, the exact token count varies between runs while the turn and retry
+bounds do not.
+
+To reproduce:
+
+```
+uv run python -m scripts.orchestration_demo
+uv run python -m src.rag.orchestrator "What does least privilege mean in IAM?"
+```

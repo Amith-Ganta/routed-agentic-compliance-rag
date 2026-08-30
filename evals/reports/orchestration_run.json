@@ -1,0 +1,20 @@
+{
+  "run": "phase3-orchestration",
+  "question": "What does least privilege mean in IAM?",
+  "thread_id": "demo-orchestration",
+  "turns_used": 2,
+  "retries_used": 0,
+  "tokens": {
+    "prompt": 9149,
+    "completion": 121,
+    "total": 9270
+  },
+  "route": "end",
+  "history": [
+    "supervisor:answer",
+    "answer_node",
+    "check_node",
+    "supervisor:end"
+  ],
+  "answer_chars": 336
+}
