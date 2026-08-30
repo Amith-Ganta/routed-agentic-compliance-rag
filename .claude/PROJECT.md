@@ -1,0 +1,2 @@
+AI Job Search Project 2 is a multi-tenant agentic RAG platform with routing, hybrid retrieval, bounded self-correction, a two-level per-tenant evaluation harness, and a product layer for tenancy, upload, and cost visibility. Every number in docs, reports, or future CV copy must come from a committed script output stored in `evals/reports/` or an equivalent results directory. Targets from earlier drafts are not facts until measured here. Secrets must never be echoed, logged, or committed, and `.env` stays local while `.env.example` only lists variable names.
+

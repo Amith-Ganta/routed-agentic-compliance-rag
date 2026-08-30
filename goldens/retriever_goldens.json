@@ -1,0 +1,87 @@
+[
+  {
+    "id": "g1",
+    "source": "01-retrieval-augmented-generation.md",
+    "input": "What is retrieval augmented generation?",
+    "expected_output": "RAG combines retrieval and generation so a model answers using retrieved context.",
+    "context": "Retrieval augmented generation combines a search step with a generation step."
+  },
+  {
+    "id": "g2",
+    "source": "02-chunking-strategies.md",
+    "input": "Why do we chunk documents before indexing?",
+    "expected_output": "Chunking breaks long documents into smaller pieces so they can be retrieved precisely.",
+    "context": "Chunking breaks long documents into smaller pieces before indexing."
+  },
+  {
+    "id": "g3",
+    "source": "03-embeddings.md",
+    "input": "What do embeddings do in a RAG system?",
+    "expected_output": "Embeddings convert text into vectors that capture semantic meaning.",
+    "context": "Embeddings convert text into vectors that capture semantic meaning."
+  },
+  {
+    "id": "g4",
+    "source": "04-reranking.md",
+    "input": "What is reranking used for?",
+    "expected_output": "Reranking reorders retrieved candidates with a stronger model to improve precision.",
+    "context": "Reranking takes a set of candidate passages from a first-stage retriever and reorders them with a stronger model."
+  },
+  {
+    "id": "g5",
+    "source": "05-faithfulness.md",
+    "input": "What does faithfulness measure?",
+    "expected_output": "It measures whether the answer stays grounded in the provided context.",
+    "context": "Faithfulness measures whether the answer stays grounded in the provided context."
+  },
+  {
+    "id": "g6",
+    "source": "06-hallucination.md",
+    "input": "What is hallucination?",
+    "expected_output": "Hallucination is when a model produces plausible but false or unsupported information.",
+    "context": "Hallucination happens when a language model produces information that sounds plausible but is false or unsupported."
+  },
+  {
+    "id": "g7",
+    "source": "07-context-precision-recall.md",
+    "input": "What is context recall?",
+    "expected_output": "Context recall asks whether the relevant supporting facts were retrieved.",
+    "context": "Context recall asks whether the relevant supporting facts were retrieved at all."
+  },
+  {
+    "id": "g8",
+    "source": "07-context-precision-recall.md",
+    "input": "What is context precision?",
+    "expected_output": "Context precision asks whether the retrieved set contains mostly useful material.",
+    "context": "Context precision asks whether the retrieved set contains mostly useful material instead of noise."
+  },
+  {
+    "id": "g9",
+    "source": "08-prompt-injection.md",
+    "input": "What is prompt injection?",
+    "expected_output": "It is when retrieved or user text tries to override the system instructions.",
+    "context": "Prompt injection is an attack where retrieved or user supplied text tries to override the system instructions."
+  },
+  {
+    "id": "g10",
+    "source": "09-guardrails.md",
+    "input": "What are guardrails?",
+    "expected_output": "Guardrails are rules that keep a language model inside allowed behavior.",
+    "context": "Guardrails are rules that keep a language model inside allowed behavior."
+  },
+  {
+    "id": "g11",
+    "source": "10-agent-evaluation.md",
+    "input": "What does agent evaluation check?",
+    "expected_output": "It checks whether a system can complete a task reliably, not just whether one answer looks good.",
+    "context": "Agent evaluation checks whether a system can complete a task reliably, not just whether a single answer looks good."
+  },
+  {
+    "id": "g12",
+    "source": "11-cost-latency-tradeoffs.md",
+    "input": "Why do cost and latency matter in AI systems?",
+    "expected_output": "They matter because higher quality models may be too expensive or too slow.",
+    "context": "Cost and latency are critical metrics for applied AI systems."
+  }
+]
+
