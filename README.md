@@ -110,3 +110,42 @@ To reproduce:
 uv run python -m scripts.orchestration_demo
 uv run python -m src.rag.orchestrator "What does least privilege mean in IAM?"
 ```
+
+## Tenancy
+
+Phase 4 turns the engine into a multi-tenant product. Each tenant gets its own
+physically separate corpus directory and its own persisted Chroma index under
+`data/tenants/<id>/corpus` and `data/index/tenants/<id>/chroma`, rather than a
+shared store filtered by a metadata field. A `contextvars.ContextVar`
+(`src/rag/tenant_context.py`) holds the active tenant, and `use_tenant(id)`
+scopes both retrieval paths to that tenant for the duration of a request. With
+no tenant active the context resolves to the global directories, so every
+existing eval and CLI path behaves exactly as before. Tenant ids are validated
+as a strict slug (`[a-z0-9_-]`) so a value like `../etc` is rejected before it
+can reach the filesystem. The sparse BM25 cache is keyed on the active corpus
+directory, so one tenant's corpus cannot leak into another through a shared
+cache slot.
+
+A small FastAPI app (`src/api/app.py`) exposes the product surface: `GET /health`,
+`POST /upload` (which stores a `.md` or `.txt` file into the caller's tenant
+corpus and rebuilds that tenant index), and `POST /ask` (which answers inside
+`use_tenant`, measures latency with `time.perf_counter()`, and reports token
+usage plus an estimated cost from clearly labelled per-million-token rate
+constants). A bearer token maps each request to a tenant, and an unknown token
+is rejected with HTTP 401.
+
+The isolation guarantee is proven deterministically at the retrieval layer,
+without spending any LLM tokens. `scripts/tenancy_demo.py` seeds tenant-a with a
+document containing `ALPHA_SENTINEL_PHRASE` and tenant-b with a different
+sentinel, builds each tenant index with real OpenAI embeddings, then queries for
+tenant-a's phrase under each tenant. The committed record in
+`evals/reports/tenancy_isolation.json` shows `isolation_holds: true`, with
+`a_can_see_a: true` and `b_can_see_a: false`: tenant A retrieves its own
+document while tenant B cannot retrieve tenant A's document at all.
+
+To reproduce:
+
+```
+uv run python -m scripts.tenancy_demo
+uv run uvicorn src.api.app:app --reload
+```

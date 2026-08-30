@@ -10,7 +10,14 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_FILE = PROJECT_ROOT / ".env"
 
-load_dotenv(dotenv_path=ENV_FILE)
+# Load this project's own .env when present. Otherwise fall back to the sibling
+# Project 1 .env, which holds the shared keys this portfolio reuses. Neither file
+# is committed; only the resolved path is referenced here, never any key value.
+_SHARED_ENV_FILE = PROJECT_ROOT.parent / "AI-JOB-Search-Project-1" / ".env"
+if ENV_FILE.exists():
+    load_dotenv(dotenv_path=ENV_FILE)
+elif _SHARED_ENV_FILE.exists():
+    load_dotenv(dotenv_path=_SHARED_ENV_FILE)
 
 
 def get_openai_api_key() -> str:

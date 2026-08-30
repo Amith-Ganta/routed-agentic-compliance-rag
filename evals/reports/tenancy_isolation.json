@@ -1,0 +1,11 @@
+{
+  "run": "phase4-tenancy",
+  "tenants": [
+    "tenant-a",
+    "tenant-b"
+  ],
+  "isolation_holds": true,
+  "a_can_see_a": true,
+  "b_can_see_a": false,
+  "notes": "retrieval-layer isolation proven without live LLM calls"
+}
