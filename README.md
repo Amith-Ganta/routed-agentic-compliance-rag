@@ -8,3 +8,14 @@ Status: in progress
 
 Numbers will appear here only after a committed eval script prints them and stores the raw output under `evals/reports/`.
 
+## Retrieval engine
+
+Phase 2 adds a routed retrieval layer on top of the existing dense baseline.
+
+- Query routing uses DeepSeek through LiteLLM to choose between local vector retrieval, live web search, or direct answer generation.
+- Local retrieval is hybrid, combining the existing dense retriever with a BM25 sparse retriever built over the same chunking configuration.
+- Dense and sparse results are fused with Reciprocal Rank Fusion, then reranked with a local cross-encoder before generation.
+- Web routes use Tavily when an API key is available, and fall back safely if it is not.
+- Generation and self-checking are both handled by DeepSeek, with a bounded retry loop that can revise answers when the judge says the draft is not grounded or incomplete.
+
+This section describes the architecture only. Evaluation metrics will be added later by the eval harness.

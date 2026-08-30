@@ -31,6 +31,15 @@ def get_deepseek_api_key() -> str:
     return key
 
 
+def get_tavily_api_key() -> str:
+    key = os.getenv("TAVILY_API_KEY")
+    if not key:
+        raise RuntimeError(
+            f"TAVILY_API_KEY is not set. Expected it in the local .env file at {ENV_FILE}."
+        )
+    return key
+
+
 CORPUS_DIR = PROJECT_ROOT / "data" / "corpus"
 INDEX_DIR = PROJECT_ROOT / "data" / "index" / "chroma"
 GOLDENS_PATH = PROJECT_ROOT / "goldens" / "retriever_goldens.json"
@@ -42,4 +51,3 @@ CHUNK_OVERLAP = 120
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHAT_MODEL = "deepseek/deepseek-chat"
 RETRIEVER_TOP_K = 5
-
