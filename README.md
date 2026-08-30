@@ -20,6 +20,14 @@ Run the regression gate with `uv run python -m evals.gate`.
 
 The harness writes results to `evals/reports/latest.json`, and no scores are quoted until that file exists.
 
+### Continuous integration
+
+CI runs a lint and compile job, then a merge-blocking eval-gate job.
+
+The eval-gate job runs the DeepEval harness and then the regression gate, and it requires `DEEPSEEK_API_KEY` and `OPENAI_API_KEY` configured as GitHub repository secrets, with `TAVILY_API_KEY` optional.
+
+If those secrets are missing, the gate job fails by design, so a green check always means a real evaluation ran.
+
 ## Retrieval engine
 
 Phase 2 adds a routed retrieval layer on top of the existing dense baseline.
