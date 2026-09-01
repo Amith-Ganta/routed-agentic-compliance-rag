@@ -5,7 +5,11 @@ import re
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "tessera_users.db"
+# Anchor the user database at the project root (two levels above src/auth/) so it
+# stays put no matter which working directory the API or a Streamlit app is run from.
+# TESSERA_DB_PATH lets a container mount it on a persistent volume instead.
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = Path(os.environ.get("TESSERA_DB_PATH", _PROJECT_ROOT / "tessera_users.db"))
 PBKDF2_ITERATIONS = 200000
 PBKDF2_ALGO = "pbkdf2_sha256"
 ADMIN_EMAIL = os.environ.get("TESSERA_ADMIN_EMAIL", "gantaamith007@gmail.com")

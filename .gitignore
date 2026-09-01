@@ -16,3 +16,7 @@ tessera_users.db
 *.db
 logs/
 
+# Scratch generation dumps
+out_*.md
+scratchpad/
+

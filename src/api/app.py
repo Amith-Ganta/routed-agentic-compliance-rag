@@ -13,11 +13,12 @@ from src.rag.config import RETRIEVER_TOP_K, CHUNK_SIZE, CHUNK_OVERLAP
 from src.rag.ingest import build_tenant_index
 from src.rag.tenant_context import tenant_corpus_dir, use_tenant
 from src.rag.strategies import run_strategy
+from src.rag.answer_guard import guarded_answer
 from src.rag.observability import trace_run
 from src.rag.models import ALLOWED_MODELS, DEFAULT_MODEL
 from src.rag.analytics import log_analytics, read_analytics
 from src.rag.live_eval import evaluate_answer
-import auth
+from src.auth import auth
 
 ALLOWED_STRATEGIES = ["adaptive", "corrective", "cache", "autonomous", "multi_agent"]
 DEFAULT_STRATEGY = "adaptive"
@@ -139,6 +140,7 @@ class AskResponse(BaseModel):
     estimated_cost_usd: float
     tenant: str
     eval: dict | None = None
+    guard: dict | None = None
     trace: list[str]
 
 
@@ -302,7 +304,27 @@ def ask(payload: AskRequest, user: tuple[int, str] = Depends(get_current_user)) 
     start = time.perf_counter()
     with trace_run(strategy, payload.question, tenant) as run_span:
         with use_tenant(tenant):
-            result = run_strategy(strategy, payload.question, top_k=top_k, model=model, force_route=fr)
+            # When eval is requested we run the ENFORCED guard loop: generate,
+            # judge with the cross-family gpt-4o-mini judge, and regenerate with
+            # the judge's reason as feedback until the faithfulness and relevancy
+            # gate passes or MAX_RETRIES is hit. It attaches result["eval"] and
+            # result["guard"]. When eval is off we keep the single un-guarded call
+            # so the common path pays no extra judge cost or latency.
+            if payload.run_eval:
+                result = guarded_answer(
+                    strategy,
+                    payload.question,
+                    top_k=top_k,
+                    model=model,
+                    force_route=fr,
+                    run_strategy_fn=run_strategy,
+                    evaluate_fn=evaluate_answer,
+                    expected_output=payload.expected_output,
+                )
+            else:
+                result = run_strategy(
+                    strategy, payload.question, top_k=top_k, model=model, force_route=fr
+                )
         latency_ms = (time.perf_counter() - start) * 1000
         run_span.finish(
             route=result.get("route", ""),
@@ -319,17 +341,11 @@ def ask(payload: AskRequest, user: tuple[int, str] = Depends(get_current_user)) 
     token_sum = tokens["prompt"] + tokens["completion"]
     estimated_cost_usd = (token_sum / 1_000_000) * DEEPSEEK_CHAT_USD_PER_1M_TOKENS_ESTIMATED
 
-    eval_result = None
-    if payload.run_eval:
-        try:
-            eval_result = evaluate_answer(
-                payload.question,
-                result.get("answer", ""),
-                result.get("contexts", []) or [],
-                expected_output=payload.expected_output,
-            )
-        except Exception:
-            eval_result = {"enabled": False, "reason": "eval error"}
+    # The guard loop already ran the judge and attached result["eval"] (and
+    # result["guard"]) on its final attempt, so we reuse that here instead of
+    # paying a second judge call. When run_eval is off, both are absent.
+    eval_result = result.get("eval")
+    guard = result.get("guard")
 
     try:
         auth.log_query(
@@ -359,6 +375,7 @@ def ask(payload: AskRequest, user: tuple[int, str] = Depends(get_current_user)) 
             "estimated_cost_usd": estimated_cost_usd,
             "latency_ms": latency_ms,
             "eval": eval_result,
+            "guard": guard,
             "trace": result.get("trace", []) or [],
         })
     except Exception:
@@ -375,6 +392,7 @@ def ask(payload: AskRequest, user: tuple[int, str] = Depends(get_current_user)) 
         estimated_cost_usd=estimated_cost_usd,
         tenant=tenant,
         eval=eval_result,
+        guard=guard,
         trace=result.get("trace", []) or [],
     )
 

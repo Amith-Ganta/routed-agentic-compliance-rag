@@ -4,8 +4,8 @@ This module provides integration between the FastAPI backend and the user
 authentication database. It logs all API requests with user context.
 
 Usage:
-    from api_auth_middleware import log_api_request
-    from auth import log_query
+    from src.auth.api_auth_middleware import log_api_call
+    from src.auth.auth import log_query
 
     # After handling a request:
     log_query(
@@ -23,7 +23,11 @@ from pathlib import Path
 import sqlite3
 
 
-DB_PATH = Path(__file__).parent / "tessera_users.db"
+import os
+
+# Same project-root anchoring as auth.py so both modules share one database file.
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = Path(os.environ.get("TESSERA_DB_PATH", _PROJECT_ROOT / "tessera_users.db"))
 
 
 def log_api_call(

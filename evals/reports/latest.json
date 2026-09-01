@@ -1,191 +1,533 @@
 {
   "run": "phase3-eval",
-  "judge_model": "deepseek/deepseek-chat",
+  "judge_model": "gpt-4o-mini",
   "metrics": {
     "answer_relevancy": {
       "threshold": 0.7,
-      "model": "deepseek/deepseek-chat"
+      "model": "gpt-4o-mini"
     },
     "correctness": {
       "threshold": 0.5,
-      "model": "deepseek/deepseek-chat"
+      "model": "gpt-4o-mini"
+    },
+    "faithfulness": {
+      "threshold": 0.7,
+      "model": "gpt-4o-mini"
+    },
+    "context_precision": {
+      "threshold": 0.7,
+      "model": "gpt-4o-mini"
+    },
+    "context_recall": {
+      "threshold": 0.7,
+      "model": "gpt-4o-mini"
     }
   },
   "aggregates": {
     "count": 12,
-    "mean_relevancy": 0.9861111111111112,
-    "mean_correctness": 0.8583333333333334,
-    "pass_rate_relevancy": 1.0,
-    "pass_rate_correctness": 1.0
+    "mean_relevancy": 0.9166666666666666,
+    "mean_correctness": 0.785715527043717,
+    "mean_faithfulness": 0.8888888888888888,
+    "mean_context_precision": 1.0,
+    "mean_context_recall": 1.0,
+    "pass_rate_relevancy": 0.9166666666666666,
+    "pass_rate_correctness": 0.9166666666666666,
+    "pass_rate_faithfulness": 0.6666666666666666,
+    "pass_rate_context_precision": 1.0,
+    "pass_rate_context_recall": 1.0
   },
   "cases": [
     {
       "id": "g1",
       "source": "01-access-control-iam.md",
-      "route": "web",
+      "route": "vector",
       "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about least privilege in IAM, with no irrelevant statements detected.",
-      "relevancy_error": "",
-      "correctness_score": 1.0,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output correctly conveys the core meaning of least privilege, matching the Expected Output's key fact that identities receive only necessary permissions. It adds relevant context about reducing attack surfa...",
-      "correctness_error": ""
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addressed the concept of least privilege in IAM without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.7754914986867628,
+        "passed": true,
+        "reason": "The actual output accurately explains the concept of least privilege in IAM and includes additional relevant details such as scoped IAM policies and periodic review of access grants. However, it slightly exceeds the s...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because there are no contradictions present, indicating that the actual output aligns perfectly with the retrieval context.",
+        "error": "",
+        "skipped": false
+      },
+      "context_precision": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the first node provides a clear and direct answer to the question about least privilege in IAM, stating that 'the principle of least privilege means each identity is granted only the permissi...",
+        "error": "",
+        "skipped": false
+      },
+      "context_recall": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the sentence directly reflects the definition provided in the first node of the retrieval context, demonstrating a perfect alignment.",
+        "error": "",
+        "skipped": false
+      }
     },
     {
       "id": "g2",
       "source": "02-encryption-at-rest.md",
-      "route": "web",
-      "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about encryption at rest, with no irrelevant statements.",
-      "relevancy_error": "",
-      "correctness_score": 1.0,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output fully covers the key facts from the Expected Output: it explains that encryption at rest protects stored data, mentions encoding on storage devices, and emphasizes that data cannot be read without th...",
-      "correctness_error": ""
+      "route": "direct",
+      "retries_used": 2,
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addressed the question about encryption at rest without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.811032392429176,
+        "passed": true,
+        "reason": "The actual output accurately describes encryption at rest, covering key facts such as the encoding of data on physical media and protection against unauthorized access. However, it includes additional details about sy...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_precision": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_recall": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      }
     },
     {
       "id": "g3",
       "source": "03-encryption-in-transit.md",
-      "route": "web",
-      "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about what encryption in transit protects against, with no irrelevant statements.",
-      "relevancy_error": "",
-      "correctness_score": 1.0,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output accurately captures the core protection of encryption in transit: preventing unauthorized reading and alteration of data during transmission. It explicitly mentions interception, eavesdropping, and i...",
-      "correctness_error": ""
+      "route": "direct",
+      "retries_used": 2,
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the question about encryption in transit without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.9010334274493713,
+        "passed": true,
+        "reason": "The actual output effectively captures the essence of the expected output by stating that encryption in transit protects data from being intercepted, read, or tampered with during transmission. It includes additional ...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_precision": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_recall": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      }
     },
     {
       "id": "g4",
       "source": "04-audit-logging.md",
-      "route": "web",
-      "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about why audit logs are required for compliance, with no irrelevant statements detected.",
-      "relevancy_error": "",
-      "correctness_score": 0.6,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output thoroughly explains the compliance documentation and evidence role of audit logs, but it omits the key fact about investigating incidents, which is central to the Expected Output. It also does not ex...",
-      "correctness_error": ""
+      "route": "direct",
+      "retries_used": 2,
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the importance of audit logs for compliance without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.8141423622569027,
+        "passed": true,
+        "reason": "The actual output provides a comprehensive explanation of why audit logs are required for compliance, covering key facts such as the need for a verifiable record, adherence to regulatory standards, and the ability to ...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_precision": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_recall": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      }
     },
     {
       "id": "g5",
       "source": "05-gdpr-data-subject-rights.md",
-      "route": "web",
-      "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output fully addresses the input question about GDPR data subject rights, with no irrelevant statements detected.",
-      "relevancy_error": "",
-      "correctness_score": 0.8,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output provides a comprehensive list of GDPR rights, including the right to access and erasure, which directly covers the key facts in the Expected Output. However, it adds many additional rights and detail...",
-      "correctness_error": ""
+      "route": "direct",
+      "retries_used": 2,
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the rights of a data subject under GDPR without including any irrelevant information.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.8009300906957835,
+        "passed": true,
+        "reason": "The actual output provides a comprehensive list of rights under GDPR, which aligns well with the expected output's mention of access and erasure rights. However, the expected output is more concise and focuses on spec...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_precision": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_recall": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      }
     },
     {
       "id": "g6",
       "source": "06-data-residency.md",
-      "route": "web",
+      "route": "vector",
       "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and fully addresses the input question about data residency rules, with no irrelevant statements detected.",
-      "relevancy_error": "",
-      "correctness_score": 0.8,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output correctly captures the core requirement that data must be stored and processed within a specific geographic boundary, which aligns with the Expected Output's key fact. It also adds relevant details a...",
-      "correctness_error": ""
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the question about data residency rules without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.8876305266506866,
+        "passed": true,
+        "reason": "The actual output accurately captures the essence of data residency rules by stating that personal data must be stored and processed within a specific geographic region. It aligns closely with the expected output, cov...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": null,
+        "passed": null,
+        "reason": "",
+        "error": "RetryError[<Future at 0x23cdd6c2300 state=finished raised TimeoutError>]",
+        "skipped": false
+      },
+      "context_precision": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the first node provides a clear and direct answer to the question about data residency rules, stating that 'Data residency rules require that personal data is stored and processed within a sp...",
+        "error": "",
+        "skipped": false
+      },
+      "context_recall": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the sentence directly aligns with the first node in retrieval context, which clearly states that 'personal data is stored and processed within a specific geographic region,' confirming a perf...",
+        "error": "",
+        "skipped": false
+      }
     },
     {
       "id": "g7",
       "source": "07-soc2-trust-criteria.md",
-      "route": "web",
+      "route": "vector",
       "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about what SOC 2 evaluates, with no irrelevant statements detected.",
-      "relevancy_error": "",
-      "correctness_score": 0.9,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output accurately lists all five Trust Services Criteria (security, availability, processing integrity, confidentiality, privacy) and correctly states that security is mandatory while the others are conditi...",
-      "correctness_error": ""
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the question about SOC 2 evaluations without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.8813072870472445,
+        "passed": true,
+        "reason": "The actual output accurately identifies the key facts present in the expected output, specifically listing the trust criteria of security, availability, processing integrity, confidentiality, and privacy. It maintains...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because there are no contradictions present, indicating that the actual output aligns perfectly with the retrieval context.",
+        "error": "",
+        "skipped": false
+      },
+      "context_precision": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the first node provides a clear and direct answer to the question about SOC 2 evaluations, stating that it evaluates against trust criteria for security, availability, processing integrity, c...",
+        "error": "",
+        "skipped": false
+      },
+      "context_recall": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the sentence in the expected output directly aligns with the information provided in the first node of the retrieval context, confirming a perfect match.",
+        "error": "",
+        "skipped": false
+      }
     },
     {
       "id": "g8",
       "source": "08-pci-dss-cardholder-data.md",
-      "route": "web",
+      "route": "vector",
       "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about PCI DSS treatment of stored cardholder data, with no irrelevant statements detected.",
-      "relevancy_error": "",
-      "correctness_score": 1.0,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output comprehensively covers the key facts from the Expected Output: it explicitly states that storage is allowed only when necessary (for legitimate legal, regulatory, or business reasons) and that stored...",
-      "correctness_error": ""
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the question about how PCI DSS treats stored cardholder data without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.8020185483370685,
+        "passed": true,
+        "reason": "The actual output accurately reflects the key facts from the expected output by stating that stored cardholder data is allowed only when necessary and must be rendered unreadable. It also provides additional details o...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": 0.6666666666666666,
+        "passed": false,
+        "reason": "The score is 0.67 because the actual output misrepresents the PCI DSS requirement by stating that cardholder data should only be stored when necessary, while omitting the crucial detail that it must also be rendered u...",
+        "error": "",
+        "skipped": false
+      },
+      "context_precision": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the first node provides a direct answer to the question about PCI DSS and stored cardholder data, stating that 'PCI DSS requires that cardholder data such as the primary account number is sto...",
+        "error": "",
+        "skipped": false
+      },
+      "context_recall": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the sentence directly aligns with the first node in retrieval context, which clearly states the requirements of PCI DSS regarding cardholder data.",
+        "error": "",
+        "skipped": false
+      }
     },
     {
       "id": "g9",
       "source": "09-secrets-management.md",
-      "route": "web",
+      "route": "vector",
       "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the question of where secrets should be stored, with no irrelevant statements.",
-      "relevancy_error": "",
-      "correctness_score": 0.7,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output provides specific examples of secrets management systems (Vault, AWS, CI/CD tooling) and mentions storing encrypted in git, which aligns with the general principle of using a dedicated vault. However...",
-      "correctness_error": ""
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the question about where secrets should be stored without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The actual output perfectly matches the expected output, covering all key facts without any discrepancies. It provides a comprehensive response to the question about where secrets should be stored, aligning fully with...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because there are no contradictions present, indicating that the actual output aligns perfectly with the retrieval context.",
+        "error": "",
+        "skipped": false
+      },
+      "context_precision": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the first node directly addresses the question about where secrets should be stored, discussing 'Secrets management' and emphasizing the importance of using a dedicated vault for credentials....",
+        "error": "",
+        "skipped": false
+      },
+      "context_recall": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the sentence directly aligns with the first node in retrieval context, which emphasizes the importance of storing secrets in a dedicated vault.",
+        "error": "",
+        "skipped": false
+      }
     },
     {
       "id": "g10",
       "source": "10-kubernetes-network-policy.md",
-      "route": "web",
+      "route": "vector",
       "retries_used": 0,
-      "relevancy_score": 0.8333333333333334,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 0.83 because the output mostly correctly explains that a Kubernetes network policy controls traffic between pods and from external sources, but includes one vague statement ('It creates necessary segments...",
-      "relevancy_error": "",
-      "correctness_score": 1.0,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output correctly identifies that network policies control pod-to-pod communication, which is the key fact in the Expected Output. It also provides additional accurate details about ingress/egress and protoc...",
-      "correctness_error": ""
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the question about Kubernetes network policies without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.8019633293950713,
+        "passed": true,
+        "reason": "The actual output accurately identifies that a Kubernetes network policy controls which pods can communicate, aligning with the key fact from the expected output. However, it includes additional context about restrict...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": 0.6666666666666666,
+        "passed": false,
+        "reason": "The score is 0.67 because the actual output incorrectly states that a compromised pod can never contact certain services, while the retrieval context clarifies that it cannot reach them due to network policies, indica...",
+        "error": "",
+        "skipped": false
+      },
+      "context_precision": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the first node provides a clear and direct answer to the question about Kubernetes network policies, stating that 'A Kubernetes network policy restricts which pods can talk to each other.' Th...",
+        "error": "",
+        "skipped": false
+      },
+      "context_recall": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the sentence directly reflects the information from the 1st node in retrieval context, which clearly states that a Kubernetes network policy restricts pod communication.",
+        "error": "",
+        "skipped": false
+      }
     },
     {
       "id": "g11",
       "source": "11-infrastructure-as-code-drift.md",
-      "route": "web",
-      "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about configuration drift in infrastructure as code, with no irrelevant statements.",
-      "relevancy_error": "",
-      "correctness_score": 0.6,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output provides a broader definition of configuration drift, mentioning undocumented changes and misalignment between current state and IaC configuration. However, it does not explicitly mention 'Terraform ...",
-      "correctness_error": ""
+      "route": "direct",
+      "retries_used": 2,
+      "relevancy": {
+        "score": 0.0,
+        "passed": false,
+        "reason": "The score is 0.00 because the output contained irrelevant statements that failed to address the question about configuration drift in infrastructure as code, such as 'I do not know.' and 'The provided context is empty...",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.12095473149407607,
+        "passed": false,
+        "reason": "The actual output fails to provide any information about configuration drift, which is a critical fact in the expected output. It acknowledges a lack of context but does not attempt to define or explain the concept, r...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_precision": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      },
+      "context_recall": {
+        "score": null,
+        "passed": null,
+        "reason": "no retrieval_context",
+        "error": "",
+        "skipped": true
+      }
     },
     {
       "id": "g12",
       "source": "12-shared-responsibility-model.md",
-      "route": "web",
+      "route": "vector",
       "retries_used": 0,
-      "relevancy_score": 1.0,
-      "relevancy_passed": true,
-      "relevancy_reason": "The score is 1.00 because the actual output directly and comprehensively addresses the input question about responsibilities under the shared responsibility model, with no irrelevant statements detected.",
-      "relevancy_error": "",
-      "correctness_score": 0.9,
-      "correctness_passed": true,
-      "correctness_reason": "The Actual Output correctly identifies the provider's responsibility for the underlying infrastructure and the customer's responsibility for data and access configuration, which are the key facts in the Expected Outpu...",
-      "correctness_error": ""
+      "relevancy": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the response directly addresses the question about the shared responsibility model without any irrelevant statements.",
+        "error": "",
+        "skipped": false
+      },
+      "correctness": {
+        "score": 0.8320821300824607,
+        "passed": true,
+        "reason": "The actual output accurately identifies the responsibilities of both the cloud provider and the customer, aligning well with the expected output. It captures the essence of the shared responsibility model and mentions...",
+        "error": "",
+        "skipped": false
+      },
+      "faithfulness": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because there are no contradictions present, indicating that the actual output aligns perfectly with the retrieval context.",
+        "error": "",
+        "skipped": false
+      },
+      "context_precision": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the first node provides a clear and direct explanation of the shared responsibility model, effectively answering the question. The subsequent nodes, ranked from second to fifth, discuss topic...",
+        "error": "",
+        "skipped": false
+      },
+      "context_recall": {
+        "score": 1.0,
+        "passed": true,
+        "reason": "The score is 1.00 because the sentence in the expected output directly aligns with the first node in the retrieval context, clearly reflecting the shared responsibility model.",
+        "error": "",
+        "skipped": false
+      }
     }
   ]
 }

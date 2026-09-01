@@ -1,928 +1,378 @@
-# 🚀 Tessera: Enterprise-Grade Multi-Tenant Agentic RAG Platform
+# Tessera: Multi-Tenant Agentic RAG for Compliance Q&A
 
-> **Production-ready compliance intelligence system** with hybrid retrieval, intelligent query routing, bounded self-correction, and real-time evaluation metrics. Built for enterprises that require accuracy, auditability, and cost control.
+A retrieval-augmented question-answering service for security and compliance documents. It routes each question to the right retrieval strategy, grounds the answer in a per-tenant corpus, checks the answer against a judge model before returning it, and gates its own quality in CI. Every metric quoted below is read straight from a committed report file, not rounded up for effect.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/fastapi-0.100+-green.svg)](https://fastapi.tiangolo.com/)
-[![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
+[![FastAPI](https://img.shields.io/badge/fastapi-0.100+-009688.svg)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/streamlit-1.28+-ff4b4b.svg)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## 📋 Executive Summary
+## What this is
 
-**Tessera** is a sophisticated retrieval-augmented generation (RAG) platform designed for enterprises managing sensitive compliance data. It combines state-of-the-art NLP techniques with production-grade security, multi-tenancy, and cost controls.
+Tessera answers questions against a corpus of compliance notes (access control, encryption, GDPR, SOC 2, PCI DSS, Kubernetes network policy, and so on). It is built to show a few things working together honestly:
 
-### Key Differentiators
+- **Hybrid retrieval** that combines dense embeddings with BM25 and reranks the result.
+- **A query router** that picks one of three strategies per question (local vector search, live web search, or direct model knowledge).
+- **A generate then verify then refine guard loop** that scores each answer with a judge model and retries a bounded number of times when the answer is not grounded or not relevant.
+- **Per-tenant isolation** so one tenant's corpus and index are never visible to another.
+- **A CI eval gate** that runs DeepEval on a fixed set of golden questions and blocks a merge if the mean scores fall below a floor.
 
-| Feature | Impact | Status |
-|---------|--------|--------|
-| **Hybrid Retrieval** | 98.6% mean answer relevancy | ✅ Proven |
-| **Intelligent Routing** | 3 retrieval strategies (vector/web/direct) | ✅ Production |
-| **Bounded Self-Correction** | Auto-refinement with turn caps | ✅ Stable |
-| **Real-time Evaluation** | DeepEval integration with GEval | ✅ Integrated |
-| **Multi-Tenant Isolation** | Cryptographic tenant separation | ✅ Verified |
-| **Cost Controls** | Per-answer token caps + daily budgets | ✅ Active |
-| **User Authentication** | Email/password + SQLite + session management | ✅ Secure |
+It is a portfolio project, not a hosted product. Where a claim is honestly "proven at the retrieval layer" rather than "cryptographically guaranteed end to end", the README says so.
 
 ---
 
-## 🏗️ System Architecture
+## Measured results
 
-### High-Level Overview
+These numbers come from `evals/reports/latest.json`, produced by `evals/run_eval.py` over the 12 golden questions in `goldens/retriever_goldens.json`. The judge model is `gpt-4o-mini`.
+
+| Metric | Mean | Pass rate | Threshold |
+|--------|------|-----------|-----------|
+| Answer relevancy | 0.917 | 11/12 | 0.7 per case |
+| Correctness (GEval) | 0.786 | 11/12 | 0.5 per case |
+| Faithfulness | 0.889 | 8/12 counted | 0.7 per case |
+| Context precision | 1.000 | 12/12 | 0.7 per case |
+| Context recall | 1.000 | 12/12 | 0.7 per case |
+
+Notes on the honest edges of this table:
+
+- One question (`g11`, infrastructure-as-code drift) was routed to the direct strategy with no retrieval context, so the model answered "I do not know". That case fails relevancy and correctness. It is a real routing miss, kept in the report rather than hidden.
+- Faithfulness is only defined when a case has retrieval context. Five direct-route cases are skipped for it, and one vector case timed out against the judge, so faithfulness is scored on 6 of 12 cases. Two of those six (`g8` PCI DSS, `g10` Kubernetes network policy) fell to 0.67 and count as fails.
+- Context precision and recall are 1.0 because the retriever surfaces the correct source node first on every vector-routed question in this set.
+
+The CI gate (`evals/gate.py`) checks the aggregate, not the per-case pass rate: it requires mean relevancy at or above 0.6 and mean correctness at or above 0.5. The current run clears both.
+
+---
+
+## Architecture
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        WEB["🌐 Web UI<br/>Streamlit"]
-        CLI["📱 CLI"]
+    subgraph Client
+        WEB["Web UI (Streamlit)"]
+        API_DOCS["API docs / curl"]
     end
-    
-    subgraph "Authentication Layer"
-        AUTH["🔐 Auth Service<br/>Email/Password<br/>SQLite DB"]
-        SESSION["📊 Session Manager<br/>User Context"]
+
+    subgraph Auth
+        AUTH["Auth service<br/>email + PBKDF2<br/>SQLite user store"]
     end
-    
-    subgraph "API Gateway"
-        GATEWAY["⚡ FastAPI<br/>Bearer Tokens<br/>Multi-Tenant Routing"]
+
+    subgraph Backend["FastAPI backend"]
+        GATEWAY["Request handling<br/>bearer token per tenant"]
+        ROUTER["Query router<br/>vector / web / direct"]
+        GUARD["Answer guard<br/>generate to verify to refine"]
     end
-    
-    subgraph "Core Processing"
-        ROUTER["🧭 Query Router<br/>DeepSeek Classification"]
-        VECTOR["📚 Vector Retrieval<br/>Dense Embeddings<br/>BM25 Sparse<br/>Reciprocal Rank Fusion"]
-        WEB_SEARCH["🔍 Web Search<br/>Tavily API<br/>Live Data"]
-        DIRECT["💡 Direct Generation<br/>Knowledge-Only"]
+
+    subgraph Retrieval
+        DENSE["Dense embeddings<br/>OpenAI text-embedding-3-small"]
+        SPARSE["BM25 sparse"]
+        FUSE["Reciprocal rank fusion<br/>+ cross-encoder rerank"]
+        WEBSRCH["Web search (Tavily)"]
     end
-    
-    subgraph "LLM Pipeline"
-        RERANK["🎯 Cross-Encoder<br/>Result Reranking"]
-        GEN["🤖 Generation<br/>DeepSeek v4-pro"]
-        JUDGE["✅ Self-Checking<br/>Grounding Verdict"]
+
+    subgraph Data["Per-tenant data"]
+        CHROMA["Chroma index<br/>data/index/&lt;tenant&gt;/"]
+        CORPUS["Corpus<br/>data/tenants/&lt;tenant&gt;/"]
     end
-    
-    subgraph "Data Layer"
-        CHROMA["🗂️ Vector Store<br/>Chroma per-tenant"]
-        CORPUS["📄 Corpus Storage<br/>Tenant-isolated"]
-        EVAL_DB["📊 Evaluation DB<br/>Metrics & Reports"]
+
+    subgraph Eval
+        JUDGE["Judge model<br/>gpt-4o-mini via LiteLLM"]
+        REPORTS["Committed reports<br/>evals/reports/"]
     end
-    
-    subgraph "Monitoring & Control"
-        BUDGET["💰 Cost Control<br/>Daily USD cap"]
-        LOGGER["📝 Query Logger<br/>Audit Trail"]
-        EVAL["📈 Evaluation Engine<br/>DeepEval + LiteLLM"]
-    end
-    
+
     WEB --> AUTH
-    CLI --> AUTH
-    AUTH --> SESSION
-    SESSION --> GATEWAY
+    AUTH --> GATEWAY
+    API_DOCS --> GATEWAY
     GATEWAY --> ROUTER
-    ROUTER --> VECTOR
-    ROUTER --> WEB_SEARCH
-    ROUTER --> DIRECT
-    VECTOR --> RERANK
-    WEB_SEARCH --> RERANK
-    DIRECT --> RERANK
-    RERANK --> GEN
-    GEN --> JUDGE
-    JUDGE --> BUDGET
-    JUDGE --> LOGGER
-    LOGGER --> EVAL
-    VECTOR -.-> CHROMA
-    VECTOR -.-> CORPUS
-    EVAL -.-> EVAL_DB
-    
-    style WEB fill:#3b82f6,stroke:#1e40af,color:#fff
+    ROUTER --> DENSE
+    ROUTER --> WEBSRCH
+    ROUTER --> GUARD
+    DENSE --> FUSE
+    SPARSE --> FUSE
+    FUSE --> GUARD
+    WEBSRCH --> GUARD
+    GUARD --> JUDGE
+    JUDGE --> GUARD
+    DENSE -.-> CHROMA
+    FUSE -.-> CORPUS
+    JUDGE -.-> REPORTS
+
     style AUTH fill:#10b981,stroke:#059669,color:#fff
     style GATEWAY fill:#f59e0b,stroke:#d97706,color:#fff
     style ROUTER fill:#8b5cf6,stroke:#7c3aed,color:#fff
-    style GEN fill:#ef4444,stroke:#dc2626,color:#fff
-    style JUDGE fill:#06b6d4,stroke:#0891b2,color:#fff
+    style GUARD fill:#06b6d4,stroke:#0891b2,color:#fff
+    style JUDGE fill:#ef4444,stroke:#dc2626,color:#fff
 ```
 
-### Data Flow Diagram
+### The generate to verify to refine loop
 
-```mermaid
-sequenceDiagram
-    participant User as 👤 User<br/>(Web/CLI)
-    participant Auth as 🔐 Auth Service
-    participant API as ⚡ FastAPI
-    participant Router as 🧭 Router
-    participant Retrieval as 🧠 Retrieval<br/>Engine
-    participant LLM as 🤖 LLM Pipeline
-    participant Eval as 📈 Evaluation
-    participant DB as 💾 Storage
-
-    User->>Auth: Login (email, password)
-    Auth->>Auth: Verify PBKDF2 hash
-    Auth->>Auth: Create session
-    Auth-->>User: Session token + user_id
-    
-    User->>API: POST /ask (question + token)
-    API->>API: Validate question
-    API->>Router: Classify query
-    Router-->>API: Route decision
-    
-    alt Vector Route
-        API->>Retrieval: Hybrid search (dense + sparse)
-        Retrieval->>Retrieval: Reciprocal Rank Fusion
-        Retrieval->>LLM: Top-K results
-    else Web Route
-        API->>Retrieval: Live web search (Tavily)
-        Retrieval-->>LLM: Web results
-    else Direct Route
-        API->>LLM: No retrieval
-    end
-    
-    LLM->>LLM: Generate answer
-    LLM->>LLM: Self-check grounding
-    LLM-->>API: Answer + tokens
-    
-    API->>Eval: Run DeepEval (optional)
-    Eval-->>API: Eval scores
-    
-    API->>DB: Log query + metrics
-    API-->>User: Response + stats
-```
-
-### Authentication & Tenant Isolation Flow
-
-```mermaid
-graph LR
-    subgraph "Frontend"
-        FORM["🔐 Login Form<br/>Email + Password"]
-    end
-    
-    subgraph "Authentication"
-        LOCAL["📱 Local Auth<br/>Verify password<br/>SQLite users table"]
-        PBKDF2["🔒 PBKDF2 Hash<br/>Secure comparison"]
-    end
-    
-    subgraph "Session Management"
-        SESSION["📊 Session Token<br/>Derive from creds"]
-        CTX["🧠 Context Var<br/>User ID + Tenant"]
-    end
-    
-    subgraph "Multi-Tenant Isolation"
-        DIR["📁 Physical Isolation<br/>data/tenants/<id>/"]
-        INDEX["🗂️ Index Isolation<br/>chroma/<tenant_id>/"]
-        CACHE["💾 Cache Isolation<br/>BM25 per tenant"]
-    end
-    
-    subgraph "Request Handling"
-        SCOPE["🔐 Scope Context<br/>use_tenant(id)"]
-        VALIDATE["✅ Slug Validation<br/>[a-z0-9_-]"]
-    end
-    
-    FORM --> LOCAL
-    LOCAL --> PBKDF2
-    PBKDF2 --> SESSION
-    SESSION --> CTX
-    CTX --> DIR
-    CTX --> INDEX
-    CTX --> CACHE
-    CTX --> SCOPE
-    SCOPE --> VALIDATE
-    
-    style FORM fill:#3b82f6,stroke:#1e40af,color:#fff
-    style PBKDF2 fill:#10b981,stroke:#059669,color:#fff
-    style DIR fill:#f59e0b,stroke:#d97706,color:#fff
-    style VALIDATE fill:#ef4444,stroke:#dc2626,color:#fff
-```
-
----
-
-## 🎯 Core Features
-
-### 1. **Hybrid Retrieval Engine**
-
-```mermaid
-graph TB
-    Q["📝 Question"]
-    
-    subgraph "Dense Retrieval"
-        E["🧠 OpenAI Embeddings<br/>text-embedding-3-small"]
-        SIM["📊 Cosine Similarity"]
-        TOP_D["🔝 Top-K Dense"]
-    end
-    
-    subgraph "Sparse Retrieval"
-        BM25["📚 BM25 Tokenization<br/>TF-IDF Scoring"]
-        TOP_S["🔝 Top-K Sparse"]
-    end
-    
-    subgraph "Fusion & Reranking"
-        RRF["🔀 Reciprocal Rank<br/>Fusion"]
-        CE["🎯 Cross-Encoder<br/>ms-marco-MiniLM-L-6-v2"]
-        FINAL["✨ Final Ranking"]
-    end
-    
-    Q --> E
-    Q --> BM25
-    E --> SIM
-    SIM --> TOP_D
-    BM25 --> TOP_S
-    TOP_D --> RRF
-    TOP_S --> RRF
-    RRF --> CE
-    CE --> FINAL
-    
-    style E fill:#3b82f6,stroke:#1e40af,color:#fff
-    style BM25 fill:#8b5cf6,stroke:#7c3aed,color:#fff
-    style RRF fill:#10b981,stroke:#059669,color:#fff
-    style CE fill:#f59e0b,stroke:#d97706,color:#fff
-    style FINAL fill:#06b6d4,stroke:#0891b2,color:#fff
-```
-
-**Metrics (12 compliance questions)**
-- Dense captures semantic relationships (concepts, meaning)
-- Sparse catches exact terminology (article numbers, control IDs)
-- Fusion combines strengths: **98.6% mean relevancy**
-
-### 2. **Intelligent Query Router**
-
-Classifies every question into one of three strategies:
-
-| Route | When to Use | Tech | Latency | Cost |
-|-------|-------------|------|---------|------|
-| **Vector** | Domain-specific questions | Local hybrid search | 50-200ms | Low |
-| **Web** | Current events, real-time | Tavily API + local | 500-2000ms | Medium |
-| **Direct** | General knowledge, quick facts | DeepSeek knowledge | 100-500ms | Low |
-
-**Router Decision Logic** (DeepSeek classification)
-```json
-{
-  "question": "What is GDPR Article 25?",
-  "classification": "vector",
-  "confidence": 0.95,
-  "reasoning": "Specific regulatory article → local corpus"
-}
-```
-
-### 3. **Bounded Self-Correction Loop**
+This is the core reliability mechanism. It lives in `src/rag/answer_guard.py` and wraps generation so no answer is returned before it has been scored.
 
 ```mermaid
 graph TD
-    START["🎯 Answer Generated"]
-    CHECK["✅ Self-Check Verdict"]
-    
-    START --> CHECK
-    CHECK -->|Grounded + Complete| END["✨ Return Answer"]
-    CHECK -->|Not Grounded| RETRY1["🔄 Retry #1"]
-    CHECK -->|Incomplete| RETRY1
-    RETRY1 --> CHECK2["✅ Re-evaluate"]
-    CHECK2 -->|Pass| END
-    CHECK2 -->|Fail| RETRY2["🔄 Retry #2"]
-    RETRY2 --> CHECK3["✅ Final Check"]
-    CHECK3 -->|Pass| END
-    CHECK3 -->|Fail| EXCEED["⚠️ Turn Limit<br/>Return as-is"]
-    EXCEED --> END
-    
-    style START fill:#3b82f6,stroke:#1e40af,color:#fff
-    style CHECK fill:#06b6d4,stroke:#0891b2,color:#fff
-    style RETRY1 fill:#f59e0b,stroke:#d97706,color:#fff
-    style RETRY2 fill:#ef4444,stroke:#dc2626,color:#fff
-    style END fill:#10b981,stroke:#059669,color:#fff
-    style EXCEED fill:#f97316,stroke:#ea580c,color:#fff
+    GEN["Generate answer"]
+    SCORE["Score with judge<br/>relevancy + faithfulness"]
+    OK{"Pass threshold?"}
+    RETRY{"Retries left?<br/>MAX_RETRIES = 2"}
+    RETURN_OK["Return answer"]
+    RETURN_LAST["Return best attempt<br/>flagged as unverified"]
+
+    GEN --> SCORE
+    SCORE --> OK
+    OK -->|Yes| RETURN_OK
+    OK -->|No| RETRY
+    RETRY -->|Yes| FEEDBACK["Feed judge reason<br/>back into next prompt"]
+    FEEDBACK --> GEN
+    RETRY -->|No| RETURN_LAST
+
+    style GEN fill:#3b82f6,stroke:#1e40af,color:#fff
+    style SCORE fill:#06b6d4,stroke:#0891b2,color:#fff
+    style RETURN_OK fill:#10b981,stroke:#059669,color:#fff
+    style RETURN_LAST fill:#f97316,stroke:#ea580c,color:#fff
 ```
 
-**Turn Cap**: Maximum 3 iterations (configurable)
-**Exponential Backoff**: Prevents infinite loops
-**Token Tracking**: Every attempt logged
+When the loop exhausts its retries, it returns the best attempt and marks it as unverified rather than pretending it passed. The judge's own reason string becomes the feedback for the next attempt, so a refinement is targeted at the actual failure rather than a blind retry.
 
-### 4. **Real-Time Evaluation**
+### Tenant isolation
 
-Uses **DeepEval** with custom LiteLLM integrations:
+Isolation is enforced at the data and index layer. Each tenant gets its own corpus directory and its own Chroma collection, scoped through a `use_tenant()` context. A tenant slug is validated against `[a-z0-9_-]` before it can touch a path, so a slug cannot escape its directory.
 
 ```mermaid
 graph LR
-    ANS["📝 Answer"]
-    CTX["📚 Contexts"]
-    EXP["💭 Expected Output<br/>Optional"]
-    
-    subgraph "DeepEval Metrics"
-        REL["📊 Answer Relevancy"]
-        CORRECT["✅ Correctness<br/>GEval"]
-        FAITH["🎯 Faithfulness<br/>Grounding"]
-    end
-    
-    subgraph "Judge Model"
-        JUDGE["🤖 DeepSeek/GPT-4<br/>via LiteLLM"]
-    end
-    
-    ANS --> JUDGE
-    CTX --> JUDGE
-    EXP --> JUDGE
-    JUDGE --> REL
-    JUDGE --> CORRECT
-    JUDGE --> FAITH
-    
-    REL --> REPORT["📈 Report<br/>Scores + Thresholds"]
-    CORRECT --> REPORT
-    FAITH --> REPORT
-    
-    style JUDGE fill:#ef4444,stroke:#dc2626,color:#fff
-    style REPORT fill:#10b981,stroke:#059669,color:#fff
+    QA["Query as tenant A"] -->|use_tenant a| IDX_A["Index A"]
+    QB["Query as tenant B"] -->|use_tenant b| IDX_B["Index B"]
+    IDX_A -->|ALPHA doc found| RA["a_can_see_a: true"]
+    IDX_B -->|ALPHA doc absent| RB["b_can_see_a: false"]
+
+    style RA fill:#10b981,stroke:#059669,color:#fff
+    style RB fill:#10b981,stroke:#059669,color:#fff
 ```
 
-**Current Performance**
-- Answer Relevancy: **0.986** (threshold 0.7)
-- Correctness: **0.858** (threshold 0.5)
-- Pass Rate: **100%** on 12 compliance questions
+The proof is committed in `evals/reports/tenancy_isolation.json`:
+
+```json
+{
+  "isolation_holds": true,
+  "a_can_see_a": true,
+  "b_can_see_a": false,
+  "notes": "retrieval-layer isolation proven without live LLM calls"
+}
+```
+
+To be precise about scope: this proves the retrieval layer keeps tenants apart. It is not a claim of end-to-end cryptographic tenancy across every subsystem.
 
 ---
 
-## 🔐 Security & Multi-Tenancy
+## Project layout
 
-### Tenant Isolation (Cryptographically Verified)
+The repository follows a conventional application layout: all importable code lives under `src/` as packages, and everything else (scripts, evals, data, docs, deployment) sits in its own top-level directory. Only the README, `pyproject.toml`, and lockfile stay at the root.
 
-```mermaid
-graph TB
-    subgraph "Tenant A"
-        CORPUS_A["📄 ALPHA_SENTINEL<br/>data/tenants/a/"]
-        INDEX_A["🗂️ Chroma Index A<br/>embeddings specific to A"]
-        CACHE_A["💾 BM25 Cache A"]
-    end
-    
-    subgraph "Tenant B"
-        CORPUS_B["📄 BETA_SENTINEL<br/>data/tenants/b/"]
-        INDEX_B["🗂️ Chroma Index B<br/>embeddings specific to B"]
-        CACHE_B["💾 BM25 Cache B"]
-    end
-    
-    subgraph "Query: Search for ALPHA_SENTINEL"
-        Q_A["Query under tenant A"]
-        Q_B["Query under tenant B"]
-    end
-    
-    Q_A -->|use_tenant(a)| INDEX_A
-    Q_A -->|use_tenant(a)| CORPUS_A
-    Q_B -->|use_tenant(b)| INDEX_B
-    Q_B -->|use_tenant(b)| CORPUS_B
-    
-    INDEX_A -->|Found| RESULT_A["✅ isolation_holds: true<br/>a_can_see_a: true"]
-    CORPUS_A -->|Found| RESULT_A
-    
-    INDEX_B -->|Not Found| RESULT_B["✅ isolation_holds: true<br/>b_can_see_a: false"]
-    CORPUS_B -->|Not Found| RESULT_B
-    
-    style CORPUS_A fill:#3b82f6,stroke:#1e40af,color:#fff
-    style CORPUS_B fill:#8b5cf6,stroke:#7c3aed,color:#fff
-    style RESULT_A fill:#10b981,stroke:#059669,color:#fff
-    style RESULT_B fill:#10b981,stroke:#059669,color:#fff
 ```
-
-**Isolation Verified**: `evals/reports/tenancy_isolation.json`
-
-### Authentication System
-
-```mermaid
-stateDiagram-v2
-    [*] --> LoginPage
-    
-    LoginPage --> SignUp: "Click Sign Up"
-    LoginPage --> LoginForm: "Have Account?"
-    
-    SignUp --> Validate: "Email + Password<br/>+ Confirm"
-    Validate --> CreateUser: "All fields ok?"
-    CreateUser --> UserCreated: "✅ Account Created"
-    UserCreated --> LoginPage: "Now Login"
-    
-    LoginForm --> VerifyEmail: "Email entered"
-    VerifyEmail --> CheckPassword: "Email exists?"
-    CheckPassword --> PBKDF2: "Verify hash"
-    PBKDF2 --> Authenticated: "✅ Password match?"
-    Authenticated --> Dashboard: "✅ Logged In"
-    
-    Dashboard --> UploadFiles: "Use App"
-    Dashboard --> AskQuestions: "Query"
-    Dashboard --> ViewStats: "See metrics"
-    Dashboard --> Logout: "🚪 Exit"
-    
-    Logout --> [*]
-    
-    style Dashboard fill:#10b981,stroke:#059669,color:#fff
-    style Authenticated fill:#3b82f6,stroke:#1e40af,color:#fff
+.
+├── src/
+│   ├── api/
+│   │   └── app.py                 # FastAPI backend: routes, tenancy, budget
+│   ├── auth/
+│   │   ├── auth.py                # SQLite user store, PBKDF2, per-user logging
+│   │   └── api_auth_middleware.py # optional API request logger (doc reference)
+│   ├── rag/
+│   │   ├── router.py              # per-question strategy routing
+│   │   ├── strategies.py          # vector / web / direct retrieval
+│   │   ├── retriever_hybrid.py    # dense + sparse fusion
+│   │   ├── retriever_dense.py     # Chroma dense retrieval
+│   │   ├── retriever_sparse.py    # BM25
+│   │   ├── reranker.py            # cross-encoder rerank
+│   │   ├── answer_guard.py        # generate to verify to refine loop
+│   │   ├── judge.py               # judge-model scoring wrapper
+│   │   ├── orchestrator.py        # LangGraph state machine
+│   │   ├── ingest.py              # corpus to Chroma index
+│   │   ├── tenant_context.py      # per-tenant scoping
+│   │   └── ...                    # llm, config, models, analytics, observability
+│   └── ui/
+│       ├── app_streamlit_auth.py  # authenticated multi-tenant UI
+│       └── app_streamlit.py       # earlier single-tenant demo
+│
+├── evals/
+│   ├── run_eval.py                # DeepEval harness over the goldens
+│   ├── gate.py                    # regression gate (mean floors)
+│   └── reports/                   # committed metrics + isolation proof
+│
+├── scripts/
+│   ├── build_index.py             # CLI wrapper around ingest
+│   ├── tenancy_demo.py            # regenerate tenancy_isolation.json
+│   └── orchestration_demo.py      # regenerate orchestration_run.json
+│
+├── goldens/retriever_goldens.json # 12 compliance Q&A pairs
+├── data/corpus/                   # 12 source compliance notes
+├── docs/                          # AUTH_SETUP, CHANGES_SUMMARY, BUILD_PROMPTS
+├── deploy/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── .github/workflows/             # ci.yml (lint + eval gate), docker.yml (build + smoke)
+├── pyproject.toml
+└── README.md
 ```
-
-**Security Features**
-- PBKDF2 password hashing (not plain SHA-256)
-- Session tokens in Streamlit state
-- SQLite user database
-- Per-user query logging
-- Bearer tokens for API multi-tenancy
 
 ---
 
-## 💰 Cost Controls & Monitoring
-
-```mermaid
-graph TB
-    DAILY["💰 Daily Budget<br/>$5.00 USD cap"]
-    PER_QUERY["📝 Per-Query Tokens<br/>Max 1024 output"]
-    
-    subgraph "Token Accounting"
-        PROMPT["📥 Prompt Tokens"]
-        COMPLETION["📤 Completion Tokens"]
-        TOTAL["📊 Total Tokens"]
-    end
-    
-    subgraph "Cost Calculation"
-        DEEPSEEK["DeepSeek<br/>$0.27/1M tokens"]
-        OPENAI["OpenAI Embeddings<br/>$0.02/1M tokens"]
-        TOTAL_COST["💵 Total Cost<br/>Question-level"]
-    end
-    
-    PROMPT --> TOTAL
-    COMPLETION --> TOTAL
-    TOTAL --> DEEPSEEK
-    TOTAL --> OPENAI
-    DEEPSEEK --> TOTAL_COST
-    OPENAI --> TOTAL_COST
-    
-    DAILY -.-> TOTAL_COST
-    PER_QUERY -.-> COMPLETION
-    
-    TOTAL_COST --> BUDGET_CHECK{"Exceed Daily<br/>Budget?"}
-    BUDGET_CHECK -->|No| ALLOW["✅ Allow Request"]
-    BUDGET_CHECK -->|Yes| REJECT["🚫 Reject Request<br/>Return 429"]
-    
-    style DAILY fill:#ef4444,stroke:#dc2626,color:#fff
-    style PER_QUERY fill:#f59e0b,stroke:#d97706,color:#fff
-    style TOTAL_COST fill:#06b6d4,stroke:#0891b2,color:#fff
-    style ALLOW fill:#10b981,stroke:#059669,color:#fff
-    style REJECT fill:#ef4444,stroke:#dc2626,color:#fff
-```
-
-**Real-time Monitoring**
-- Per-answer token breakdown (prompt/completion/total)
-- Estimated USD cost per answer
-- Daily spend tracking (in-process)
-- Budget endpoint: `GET /budget`
-
----
-
-## 🧪 Evaluation Framework
-
-### Regression Gates
-
-```mermaid
-graph LR
-    EVAL["🧪 Run DeepEval"]
-    REPORT["📊 latest.json<br/>Mean Relevancy<br/>Mean Correctness"]
-    GATE["🚪 Regression Gate"]
-    
-    EVAL --> REPORT
-    REPORT --> GATE
-    
-    GATE -->|Mean Relevancy ≥ 0.6| PASS1["✅ Relevancy PASS"]
-    GATE -->|Mean Correctness ≥ 0.5| PASS2["✅ Correctness PASS"]
-    GATE -->|Any fail| FAIL["❌ FAIL<br/>Merge blocked"]
-    
-    PASS1 --> FINAL["✅ All Gates PASS<br/>CI green"]
-    PASS2 --> FINAL
-    
-    style EVAL fill:#3b82f6,stroke:#1e40af,color:#fff
-    style REPORT fill:#06b6d4,stroke:#0891b2,color:#fff
-    style GATE fill:#f59e0b,stroke:#d97706,color:#fff
-    style PASS1 fill:#10b981,stroke:#059669,color:#fff
-    style PASS2 fill:#10b981,stroke:#059669,color:#fff
-    style FAIL fill:#ef4444,stroke:#dc2626,color:#fff
-    style FINAL fill:#06b6d4,stroke:#0891b2,color:#fff
-```
-
-### CI/CD Pipeline
-
-```mermaid
-graph TB
-    COMMIT["📝 Commit pushed"]
-    LINT["🔍 Lint & Compile"]
-    GATE["🧪 Eval Gate<br/>DeepEval + Regression"]
-    
-    COMMIT --> LINT
-    LINT -->|Pass| GATE
-    LINT -->|Fail| BLOCK["🚫 Blocked"]
-    GATE -->|Pass| MERGE["✅ Mergeable"]
-    GATE -->|Fail| BLOCK
-    
-    style LINT fill:#f59e0b,stroke:#d97706,color:#fff
-    style GATE fill:#3b82f6,stroke:#1e40af,color:#fff
-    style MERGE fill:#10b981,stroke:#059669,color:#fff
-    style BLOCK fill:#ef4444,stroke:#dc2626,color:#fff
-```
-
-**CI Secrets Required**
-- `DEEPSEEK_API_KEY` (generation + evaluation)
-- `OPENAI_API_KEY` (embeddings + eval judge)
-- `TAVILY_API_KEY` (optional, web search)
-
----
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Framework**: FastAPI (async, OpenAPI docs, built-in validation)
-- **LLM Integration**: LiteLLM (multi-model support, provider abstraction)
-- **Generation**: DeepSeek v4-pro (cost-effective, strong reasoning)
-- **Embeddings**: OpenAI text-embedding-3-small (high quality, proven)
-- **Vector Store**: Chroma (local deployment, per-tenant indexing)
-- **Sparse Retrieval**: BM25 via rank_bm25 (exact matching)
-- **Reranking**: Cross-encoder ms-marco-MiniLM-L-6-v2 (local)
-- **Orchestration**: LangGraph (deterministic state machine)
-- **Evaluation**: DeepEval + custom LiteLLM judge (comprehensive metrics)
-
-### Frontend
-- **UI Framework**: Streamlit (rapid iteration, production-ready)
-- **PDF Processing**: pypdf (text extraction)
-- **State Management**: Streamlit session_state
-- **Authentication**: SQLite + PBKDF2 (lightweight, no external deps)
-
-### DevOps & Monitoring
-- **Package Manager**: uv (fast, reliable Python packaging)
-- **Process Manager**: uvicorn (ASGI server)
-- **Database**: SQLite (development), PostgreSQL-ready (production)
-- **API Testing**: FastAPI built-in `/docs` (Swagger UI)
-- **Logging**: Structured JSON logs (audit trail)
-
-### Why These Choices?
-
-| Component | Choice | Rationale |
-|-----------|--------|-----------|
-| **LiteLLM** | Multi-provider abstraction | Switch models without code changes |
-| **DeepSeek** | Cost + quality | 10x cheaper than GPT-4, strong compliance reasoning |
-| **Chroma** | Vector database | Per-tenant isolation via directory scoping |
-| **BM25** | Sparse retrieval | Zero external deps, perfect for exact terminology |
-| **LangGraph** | Orchestration | Deterministic state machine, checkpointing built-in |
-| **Streamlit** | Frontend | Auth-ready, professional UI, iterates fast |
-
----
-
-## 📊 Performance Metrics
-
-### Retrieval Quality (12 Compliance Questions)
-
-```
-┌─────────────────────────────────────────────┐
-│ Metric                     │ Value          │
-├─────────────────────────────────────────────┤
-│ Mean Answer Relevancy      │ 0.986 (98.6%)  │
-│ Relevancy Pass Rate (≥0.7) │ 100%           │
-│ Mean Correctness (GEval)   │ 0.858 (85.8%)  │
-│ Correctness Pass Rate (≥0.5)│ 100%          │
-│ Retriever: Vector Route    │ 100% of runs   │
-└─────────────────────────────────────────────┘
-```
-
-### Orchestration Performance
-
-```
-Run: Orchestration Demo
-Question: "What does least privilege mean in IAM?"
-├─ Turns: 2 (under cap of 3)
-├─ Retries: 0 (no refinement needed)
-├─ Path: supervisor → answer → check → end
-├─ Tokens Used: 9,270
-├─ Tokens (Prompt): ~4,100
-├─ Tokens (Completion): ~5,170
-└─ Est. Cost: $0.0025 USD
-```
-
-### Latency Profile
-
-| Operation | Latency | Route |
-|-----------|---------|-------|
-| Vector search | 50-200ms | Local hybrid |
-| Web search | 500-2000ms | Tavily + local |
-| Direct generation | 100-500ms | Knowledge-only |
-| Cross-encoder rerank | 50-100ms | Local GPU |
-| Self-check | 200-500ms | LLM API call |
-
----
-
-## 🚀 Quick Start
+## Quick start
 
 ### Prerequisites
 
-```bash
-# System requirements
-Python 3.10+
-API Keys: OPENAI_API_KEY, DEEPSEEK_API_KEY (via LiteLLM)
-Optional: TAVILY_API_KEY (for web search)
-```
+- Python 3.10 or newer
+- [`uv`](https://github.com/astral-sh/uv) for dependency management
+- `OPENAI_API_KEY` (embeddings and the eval judge) and `DEEPSEEK_API_KEY` (generation)
+- `TAVILY_API_KEY` is optional and only needed for the web-search route
 
-### Installation
+### Install
 
 ```bash
-# Clone and enter
 git clone https://github.com/Amith-Ganta/routed-agentic-compliance-rag.git
 cd routed-agentic-compliance-rag
 
-# Install dependencies with uv
 uv sync
 
-# Copy environment template
 cp .env.example .env
-# Add your API keys to .env
+# then add your keys to .env
 ```
 
-### Build Vector Index
+### Build the index
+
+The index is gitignored, so build it once before the first run:
 
 ```bash
-# Rebuild Chroma index from corpus
-# (required before first run)
-uv run python -m src.rag.ingest
-
-# This step:
-# - Reads documents from data/corpus/
-# - Calls OpenAI embeddings API
-# - Builds BM25 cache
-# - Saves Chroma index to data/index/
+uv run python -m scripts.build_index
 ```
 
-### Run Services
+This reads `data/corpus/`, calls the embedding API, builds the BM25 cache, and writes the Chroma index to `data/index/`.
+
+### Run the services
 
 ```bash
-# Terminal 1: Start FastAPI backend
+# Terminal 1: FastAPI backend
 uv run uvicorn src.api.app:app --reload --port 8000
 
-# Terminal 2: Start Streamlit frontend
-uv run streamlit run app_streamlit_auth.py --server.port 8501
+# Terminal 2: Streamlit frontend
+uv run streamlit run src/ui/app_streamlit_auth.py --server.port 8501
 ```
 
-### Access the App
+Then open:
 
-```
-🌐 Web UI:     http://localhost:8501
-📚 API Docs:   http://localhost:8000/docs
-❤️  Health:    curl http://localhost:8000/health
-```
+- Web UI: `http://localhost:8501`
+- API docs: `http://localhost:8000/docs`
+- Health: `curl http://localhost:8000/health`
 
-### Test Credentials
+### Run with Docker
 
-```
-Email:    test@tessera.dev
-Password: test123456
+The build context is the repository root; the Dockerfile lives in `deploy/`, and `.dockerignore` stays at the root because Docker only reads it from the context root.
 
-Or create a new account via Sign Up tab
+```bash
+docker compose -f deploy/docker-compose.yml up --build
 ```
 
 ---
 
-## 📈 Evaluation & Regression Tests
-
-### Run Full Evaluation Suite
+## Evaluation
 
 ```bash
-# 1. Build index (if not done)
-uv run python -m src.rag.ingest
+# 1. Build the index if you have not already
+uv run python -m scripts.build_index
 
-# 2. Run DeepEval against retriever goldens
+# 2. Run DeepEval over the goldens -> evals/reports/latest.json
 uv run python -m evals.run_eval
-# Output: evals/reports/latest.json
 
-# 3. Check regression gates
+# 3. Check the regression gate (fails the build if a mean floor is missed)
 uv run python -m evals.gate
-# Output: PASS mean_relevancy=0.986 mean_correctness=0.858
 
-# 4. Test multi-tenant isolation
+# 4. Regenerate the tenant-isolation proof
 uv run python -m scripts.tenancy_demo
-# Output: evals/reports/tenancy_isolation.json
-# Result: {"isolation_holds": true, "a_can_see_a": true, "b_can_see_a": false}
 
-# 5. Test orchestration
+# 5. Regenerate an orchestration trace
 uv run python -m scripts.orchestration_demo
-# Output: evals/reports/orchestration_run.json
 ```
 
-### Continuous Integration
+Every number in the results table above is reproducible from step 2. If you change a prompt or a retrieval setting, rerun the harness and the committed report changes with it.
 
-The GitHub Actions pipeline runs:
-1. Lint + compile check
-2. DeepEval harness (requires `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`)
-3. Regression gate (blocks merge if thresholds missed)
+### CI
 
-All metrics traced back to committed report files.
+Two workflows run on push and pull request to `main`:
+
+- **`ci.yml`** byte-compiles the `src/rag` modules and the evals, then runs the DeepEval harness and the gate. It needs `DEEPSEEK_API_KEY` and `OPENAI_API_KEY` as repository secrets and fails if they are missing.
+- **`docker.yml`** builds the image from `deploy/Dockerfile` and runs a `/health` smoke test against the running container. It does not push to a registry yet.
 
 ---
 
-## 📚 Project Structure
+## Configuration
 
-```
-tessera/
-├── app_streamlit_auth.py        # 🎨 Frontend (auth + UI)
-├── auth.py                      # 🔐 User authentication
-├── api_auth_middleware.py       # 📊 Optional API logging
-│
-├── src/
-│   ├── api/
-│   │   └── app.py              # ⚡ FastAPI backend (routes, tenancy)
-│   ├── rag/
-│   │   ├── agent_pipeline.py   # 🧠 Query → Answer (router + retrieval)
-│   │   ├── ingest.py           # 📥 Corpus → Index
-│   │   ├── orchestrator.py     # 🎯 LangGraph state machine
-│   │   ├── llm.py              # 🤖 LLM calls + token counting
-│   │   └── tenant_context.py   # 🔐 Multi-tenant scoping
-│
-├── evals/
-│   ├── run_eval.py             # 🧪 DeepEval harness
-│   ├── gate.py                 # 🚪 Regression gates
-│   └── reports/                # 📊 Committed metrics
-│
-├── scripts/
-│   ├── tenancy_demo.py         # 🔐 Verify isolation
-│   └── orchestration_demo.py   # 🎯 Test state machine
-│
-├── data/
-│   ├── corpus/                 # 📄 GDPR, SOC 2, PCI DSS docs
-│   ├── index/                  # 🗂️ Chroma vector store
-│   └── tenants/                # 👥 Per-tenant corpus copies
-│
-├── goldens/
-│   └── retriever_goldens.json  # 📝 12 compliance Q&A pairs
-│
-├── tessera_users.db            # 👤 SQLite user database
-├── pyproject.toml              # 📦 Dependencies
-├── .env.example                # 🔑 Environment template
-└── README.md                   # 📖 This file
-```
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
+Set these in `.env` (see `.env.example`):
 
 ```bash
-# LLM & API Keys (required)
-OPENAI_API_KEY=sk-...
-DEEPSEEK_API_KEY=sk-...
-TAVILY_API_KEY=...              # Optional, for web search
+# Required
+OPENAI_API_KEY=...
+DEEPSEEK_API_KEY=...
 
-# Model Configuration
+# Optional
+TAVILY_API_KEY=...                 # web-search route only
+
+# Models
 TESSERA_GENERATION_MODEL=deepseek/deepseek-chat
 TESSERA_EMBED_MODEL=text-embedding-3-small
 
-# Cost Controls
+# Cost controls
 TESSERA_MAX_OUTPUT_TOKENS=1024
 TESSERA_DAILY_SPEND_USD_CAP=5.0
 
 # Security
-TESSERA_ENV=dev                 # dev or prod
-TESSERA_SESSION_SECRET=...      # Required in prod
+TESSERA_ENV=dev                    # dev or prod
+TESSERA_SESSION_SECRET=...         # required in prod
 
-# Deployment
-TESSERA_API_BASE=http://localhost:8000
-```
-
-### Feature Toggles
-
-```python
-# In src/rag/agent_pipeline.py
-ENABLE_WEB_SEARCH = True        # Enable Tavily web search
-ENABLE_SELF_CHECK = True        # Enable bounded refinement
-MAX_TURNS = 3                   # Turn cap (bounded retries)
+# Optional: mount the user DB on a persistent volume
+TESSERA_DB_PATH=/data/tessera_users.db
 ```
 
 ---
 
-## 🤝 Contributing
+## Tech stack
 
-### Development Workflow
+| Layer | Choice | Why |
+|-------|--------|-----|
+| API | FastAPI + uvicorn | async, built-in validation, OpenAPI docs |
+| LLM access | LiteLLM | one interface across DeepSeek and OpenAI |
+| Generation | DeepSeek | strong reasoning at low cost |
+| Embeddings | OpenAI text-embedding-3-small | quality per dollar |
+| Vector store | Chroma | simple per-tenant collections on local disk |
+| Sparse retrieval | BM25 (rank_bm25) | exact-term matching, no external service |
+| Rerank | cross-encoder ms-marco-MiniLM-L-6-v2 | local, no API cost |
+| Orchestration | LangGraph | explicit state machine for the guard loop |
+| Evaluation | DeepEval + gpt-4o-mini judge | cross-family judge, committed reports |
+| Frontend | Streamlit | fast to build, auth-ready |
+| Auth | SQLite + PBKDF2 | no external dependency for a demo |
+| Packaging | uv | fast, reproducible installs |
 
-```bash
-# 1. Create feature branch
-git checkout -b feature/your-feature
-
-# 2. Make changes, run tests
-uv run python -m pytest tests/
-
-# 3. Run linter
-uv run ruff check . --fix
-
-# 4. Run eval suite (ensures no regression)
-uv run python -m evals.run_eval
-uv run python -m evals.gate
-
-# 5. Commit with meaningful message
-git add .
-git commit -m "feat: add feature description"
-git push origin feature/your-feature
-
-# 6. Open PR (CI runs gates automatically)
-```
-
-### Code Standards
-
-- **Python**: 3.10+, type hints required
-- **Formatting**: Black + isort (via ruff)
-- **Linting**: Ruff for style + correctness
-- **Testing**: pytest for unit tests
-- **Metrics**: All changes must pass regression gates
-
-### Roadmap
-
-- [ ] PostgreSQL backend (multi-process cost tracking)
-- [ ] Langfuse integration (production observability)
-- [ ] Advanced caching (Redis for embeddings)
-- [ ] Multi-modal retrieval (images, videos)
-- [ ] Custom reranker fine-tuning
-- [ ] Kubernetes deployment templates
+The judge model is deliberately a different family (`gpt-4o-mini`) from the generator (DeepSeek), so the model grading an answer is not the same one that wrote it.
 
 ---
 
-## 📝 Evaluation Reports
+## Known limitations
 
-All committed reports are in `evals/reports/`:
+Kept here rather than buried, because a senior review will find them anyway:
 
-- `latest.json` — Latest DeepEval run (updated on each eval)
-- `retriever_goldens.json` — 12 compliance Q&A pairs
-- `tenancy_isolation.json` — Proof of tenant isolation
-- `orchestration_run.json` — Example orchestration trace
+- The direct-knowledge route can answer "I do not know" when the router sends a corpus question there without context. One golden case (`g11`) shows exactly this.
+- Faithfulness is only meaningful on retrieval-backed answers, so it covers half the golden set.
+- Cost tracking is in-process, so the daily budget cap is per-process, not shared across workers. A real deployment would move this to a shared store.
+- The user store is SQLite. It is fine for a single-node demo and would move to Postgres for anything multi-process.
+- Tenant isolation is proven at the retrieval and index layer, not across every subsystem.
 
-**How to Read Reports**
+## Roadmap
 
-```json
-{
-  "run_id": "eval-2024-09-01-001",
-  "model": "deepseek/deepseek-chat",
-  "timestamp": "2024-09-01T10:30:00Z",
-  "metrics": {
-    "mean_answer_relevancy": 0.986,
-    "mean_correctness": 0.858,
-    "answer_relevancy_pass_rate": 1.0,
-    "correctness_pass_rate": 1.0
-  },
-  "cases": [...],
-  "regressions": "PASS"
-}
-```
+- Docker and Kubernetes deployment to a managed cluster
+- Shared cost tracking (Postgres or Redis) so the budget cap holds across workers
+- Langfuse tracing for production observability
+- Wider golden set and a router-accuracy metric so misroutes like `g11` are caught directly
 
 ---
 
-## 🏆 Key Achievements
+## License
 
-| Metric | Achievement |
-|--------|------------|
-| **Accuracy** | 98.6% mean relevancy on compliance questions |
-| **Reliability** | 100% pass rate on regression gates |
-| **Isolation** | Cryptographically verified tenant separation |
-| **Cost** | 10x cheaper than GPT-4 for equivalent quality |
-| **Speed** | Sub-200ms local retrieval, <2s total latency |
-| **Auditability** | Every query logged with full trace |
-
----
-
-## 📄 License
-
-MIT License — See [LICENSE](LICENSE) for details.
-
----
-
-## 👥 Team
-
-Built by engineers who care about:
-- ✅ **Accuracy** — Metrics over promises
-- ✅ **Transparency** — Traces and reports in the repo
-- ✅ **Security** — Multi-tenant isolation by design
-- ✅ **Cost Control** — Real budget enforcement
-- ✅ **Simplicity** — Minimal dependencies, clear code
-
----
-
-## 🚀 Next Steps
-
-1. **Try it out**: `http://localhost:8501`
-2. **Create account**: Sign up with email/password
-3. **Upload PDF**: Test file upload and PDF text extraction
-4. **Ask questions**: Query against compliance docs
-5. **Monitor**: Check sidebar statistics and query logs
-6. **Evaluate**: Run the full eval suite with `uv run python -m evals.run_eval`
-
----
-
-## 📞 Support
-
-**Questions?**
-- Check the [docs](docs/) folder
-- Review committed report files in `evals/reports/`
-- Run evaluation suite to verify setup
-- Open an issue on GitHub
-
-**Deployment Help**
-- See `AUTH_SETUP.md` for authentication details
-- See `CHANGES_SUMMARY.md` for recent updates
-- See `.env.example` for configuration
-
----
-
-<div align="center">
-
-**Built with ❤️ for enterprises that require accuracy, security, and transparency.**
-
-```
-🚀 Tessera: Enterprise RAG Done Right
-```
-
-[⬆ back to top](#-tessera-enterprise-grade-multi-tenant-agentic-rag-platform)
-
-</div>
+MIT. See [LICENSE](LICENSE).

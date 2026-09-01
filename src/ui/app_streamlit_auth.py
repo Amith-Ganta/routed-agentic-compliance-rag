@@ -4,7 +4,7 @@ import requests
 import streamlit as st
 from pypdf import PdfReader
 from io import BytesIO
-from auth import init_db, create_user, authenticate_user, get_user_email, log_query, get_user_stats
+from src.auth.auth import init_db, create_user, authenticate_user, get_user_email, log_query, get_user_stats
 
 st.set_page_config(page_title="Tessera Agentic RAG", layout="wide")
 
