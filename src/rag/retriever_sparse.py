@@ -20,7 +20,10 @@ def _tokenize(text: str) -> list[str]:
 
 def _load_source_documents(corpus_dir: str) -> list[Document]:
     documents: list[Document] = []
-    for path in sorted(Path(corpus_dir).glob("*.md")):
+    # Accept both markdown and plain text so the sparse corpus matches what
+    # build_tenant_index indexes (uploaded PDFs are converted to .txt).
+    base = Path(corpus_dir)
+    for path in sorted(base.glob("*.md")) + sorted(base.glob("*.txt")):
         documents.extend(TextLoader(str(path), encoding="utf-8").load())
     return documents
 
@@ -31,9 +34,11 @@ def _chunk_documents(corpus_dir: str) -> list[Document]:
 
 
 @lru_cache(maxsize=8)
-def _build_bm25(corpus_dir: str) -> tuple[BM25Okapi, list[Document], list[list[str]]]:
+def _build_bm25(corpus_dir: str) -> tuple[BM25Okapi | None, list[Document], list[list[str]]]:
     docs = _chunk_documents(corpus_dir)
     tokenized = [_tokenize(doc.page_content) for doc in docs]
+    if not docs or not any(tokenized):
+        return None, [], []
     return BM25Okapi(tokenized), docs, tokenized
 
 
@@ -41,6 +46,8 @@ def retrieve_sparse(question: str, top_k: int) -> list[Document]:
     """Return BM25-ranked documents with the same shape as dense retrieval."""
 
     bm25, docs, _ = _build_bm25(str(active_corpus_dir()))
+    if bm25 is None or not docs:
+        return []
     scores = bm25.get_scores(_tokenize(question))
     ranked_indices = sorted(range(len(docs)), key=lambda index: scores[index], reverse=True)[:top_k]
     results: list[Document] = []

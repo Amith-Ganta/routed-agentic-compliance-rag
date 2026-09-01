@@ -1,0 +1,22 @@
+services:
+  api:
+    build: .
+    image: tessera-api:local
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  frontend:
+    image: tessera-api:local
+    depends_on:
+      - api
+    command: uv run streamlit run app_streamlit_auth.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      TESSERA_API_BASE: "http://api:8000"
+    env_file:
+      - .env
+    restart: unless-stopped

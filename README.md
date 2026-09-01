@@ -149,3 +149,47 @@ To reproduce:
 uv run python -m scripts.tenancy_demo
 uv run uvicorn src.api.app:app --reload
 ```
+
+## Cost controls, security, and guardrails
+
+### Cost controls
+
+`src/rag/llm.py` enforces two caps:
+
+- `MAX_OUTPUT_TOKENS` (env `TESSERA_MAX_OUTPUT_TOKENS`, default `1024`) caps output tokens per answer.
+- `DAILY_SPEND_USD_CAP` (env `TESSERA_DAILY_SPEND_USD_CAP`, default `5.0` USD) is a running per-process spend ceiling. When it is reached, the next model call raises and the request fails closed instead of spending more.
+
+The backend exposes `GET /budget` with no auth, aggregate only. It returns `max_output_tokens`, `daily_spend_usd_cap`, `spend_so_far_usd`, and `spend_remaining_usd`.
+
+The Streamlit sidebar has a "Cost Controls" panel that calls `/budget` and shows the per-answer token cap, the daily spend cap, and the running spend for the current process.
+
+Honest note: `spend_so_far_usd` resets when the API process restarts. It is in-process, not persisted, so it tracks a single run, not lifetime spend.
+
+### Security
+
+Session tokens are signed with `SESSION_SECRET`. In dev the app falls back to a known insecure default so local runs work with no setup. If `TESSERA_ENV=prod` and `TESSERA_SESSION_SECRET` is missing or equal to that insecure default, the app raises `RuntimeError` at import time and refuses to start. This is fail-closed: a misconfigured prod deploy stops rather than running with a guessable signing key.
+
+### Guardrails
+
+`POST /ask` validates the question before running any strategy:
+
+- Empty questions are rejected with HTTP 400.
+- Questions over 4000 characters are rejected with HTTP 400.
+- A small blocklist of obvious prompt injection and secret-probe phrases is rejected with HTTP 400, for example "ignore previous instructions", "reveal your system prompt", and "print your api key".
+
+This is a lightweight first line of defense, not a complete jailbreak filter.
+
+### Answer-quality evaluation in the UI
+
+The Streamlit answer form has an "Evaluate answer quality (DeepEval)" checkbox and an optional expected-answer text box. When checked, the `/ask` request sets `run_eval=true`, and sets `expected_output` if provided.
+
+The backend runs DeepEval using judge model `gpt-4o-mini` via `OpenAIModel` over the question, answer, and retrieved contexts. It returns the per-metric scores in the response `eval` field. The frontend renders them in a "DeepEval" expander with a pass or fail marker, score, threshold, and the judge's reason per metric.
+
+Requirement: displaying real scores needs a live `OPENAI_API_KEY` in the local `.env`, because the judge is an OpenAI model. Without it, the backend returns eval disabled and the panel shows nothing, by design, rather than crashing.
+
+To run locally:
+
+```
+uv run uvicorn src.api.app:app --reload --port 8000
+uv run streamlit run app_streamlit_auth.py
+```

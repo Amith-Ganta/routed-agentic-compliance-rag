@@ -111,10 +111,15 @@ def _run_self_check(question: str, answer: str, contexts: list[Document]) -> tup
     return False, False, "fallback after JSON parse failure", usage
 
 
-def invoke(question: str, top_k: int = RETRIEVER_TOP_K) -> dict[str, Any]:
+def invoke(question: str, top_k: int = RETRIEVER_TOP_K, force_route: str | None = None) -> dict[str, Any]:
     trace: list[str] = []
     usage = {"prompt": 0, "completion": 0, "total": 0}
-    decision = route_query(question)
+    if force_route and force_route in {"vector", "web", "direct"}:
+        decision = type('RoutingDecision', (), {'route': force_route, 'reason': 'user-selected'})()
+        trace.append(f"route={force_route}: user-selected")
+    else:
+        decision = route_query(question)
+        route = decision.route
     route = decision.route
     trace.append(f"route={route}: {decision.reason}")
 

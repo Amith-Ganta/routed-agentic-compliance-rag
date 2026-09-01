@@ -40,8 +40,18 @@ def _classify_once(question: str) -> dict[str, Any]:
         {
             "role": "system",
             "content": (
-                'Classify the user query as one of "vector", "web", or "direct". '
-                'Return strict JSON with keys route and reason.'
+                "You route a user query for a private, tenant specific knowledge base "
+                "assistant. The tenant has uploaded their own documents (product manuals, "
+                "internal policies, handbooks). Classify the query as one of "
+                '"vector", "web", or "direct".\n'
+                '- "vector": the query asks about a specific named product, policy, '
+                "specification, procedure, or any fact that would live in the uploaded "
+                "documents. This is the default when in doubt.\n"
+                '- "web": the query needs current or external information that would not '
+                "be in a static document set (today's news, live prices, recent events).\n"
+                '- "direct": the query is general knowledge or arithmetic answerable '
+                "without any documents.\n"
+                "Return strict JSON with keys route and reason."
             ),
         },
         {"role": "user", "content": question},
