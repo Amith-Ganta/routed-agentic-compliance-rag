@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 from litellm import completion
 
@@ -10,11 +11,14 @@ from .config import CHAT_MODEL, get_deepseek_api_key
 
 
 def generate_answer(question: str, contexts: list) -> str:
-    context_text = "\n\n".join(doc.page_content for doc in contexts)
+    context_text = "\n\n".join(
+        f"[Source: {os.path.basename(doc.metadata.get('source', '')) or 'unknown'}]\n{doc.page_content}"
+        for doc in contexts
+    )
     messages = [
         {
             "role": "system",
-            "content": "Answer only from the provided context. If the context is insufficient, say you do not know.",
+            "content": "Answer only from the provided context; each chunk is prefixed with its source as [Source: filename]. If the context is insufficient, say you don't know. You may cite the source filename when stating a fact.",
         },
         {
             "role": "user",

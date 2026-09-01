@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
 
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
@@ -69,8 +70,13 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
+def _source_label(doc: Document) -> str:
+    source = doc.metadata.get("source", "")
+    return os.path.basename(source) if source else "unknown"
+
+
 def _context_text(docs: list[Document]) -> str:
-    return "\n\n".join(doc.page_content for doc in docs)
+    return "\n\n".join(f"[Source: {_source_label(doc)}]\n{doc.page_content}" for doc in docs)
 
 
 def _sources(docs: list[Document]) -> list[str]:
@@ -87,7 +93,7 @@ def _answer_prompt(
     context_text: str,
     feedback: str | None = None,
 ) -> list[dict[str, str]]:
-    system = "Answer only from the provided context. If the context is insufficient, say you do not know."
+    system = "Answer only from the provided context; each chunk is prefixed with its source as [Source: filename]. If the context is insufficient, say you don't know. You may cite the source filename when stating a fact."
     if feedback:
         system += "\nFeedback: " + feedback
     user = f"Question: {question}\n\nContext:\n{context_text}"
