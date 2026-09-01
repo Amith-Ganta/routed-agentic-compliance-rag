@@ -14,6 +14,9 @@ concerns live in one place instead of being copy-pasted across strategies:
 3. Observability. When LangSmith is configured, each call is traced with its
    model, token usage, and estimated cost. When it is not, tracing is a no-op
    and nothing else changes.
+
+A hard per-call request timeout is applied so a stalled provider call fails
+fast into the existing fallback chain instead of hanging.
 """
 
 from __future__ import annotations
@@ -47,6 +50,9 @@ def _env_num(name, default, cast):
 
 # Per-call output ceiling. Keeps any one answer from ballooning.
 MAX_OUTPUT_TOKENS = _env_num("TESSERA_MAX_OUTPUT_TOKENS", 1024, int)
+
+# Hard per-call request timeout, so a stalled provider call fails fast.
+REQUEST_TIMEOUT_SECONDS = _env_num("TESSERA_REQUEST_TIMEOUT_SECONDS", 30, float)
 
 # Process-wide soft budget for a single run of the app. Once the estimated spend
 # crosses this line, further LLM calls are refused with a clear error instead of
@@ -157,6 +163,7 @@ def complete(
         temperature=temperature,
         max_tokens=MAX_OUTPUT_TOKENS,
         num_retries=2,
+        timeout=REQUEST_TIMEOUT_SECONDS,
     )
     if fallbacks:
         kwargs["fallbacks"] = fallbacks

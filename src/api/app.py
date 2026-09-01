@@ -22,6 +22,12 @@ import auth
 ALLOWED_STRATEGIES = ["adaptive", "corrective", "cache", "autonomous", "multi_agent"]
 DEFAULT_STRATEGY = "adaptive"
 
+# Route used when a caller does not pin force_route. "vector" skips the LLM
+# router round-trip (the private-KB fast path); set TESSERA_DEFAULT_FORCE_ROUTE
+# to "auto" to restore LLM routing on every unset request.
+_DEFAULT_FORCE_ROUTE_RAW = os.environ.get("TESSERA_DEFAULT_FORCE_ROUTE", "vector").strip().lower()
+DEFAULT_FORCE_ROUTE = _DEFAULT_FORCE_ROUTE_RAW if _DEFAULT_FORCE_ROUTE_RAW in {"auto", "vector", "web", "direct"} else "vector"
+
 DEEPSEEK_CHAT_USD_PER_1M_TOKENS_ESTIMATED = 0.27
 OPENAI_TEXT_EMBEDDING_3_SMALL_USD_PER_1M_TOKENS_ESTIMATED = 0.02
 
@@ -137,6 +143,20 @@ class AskResponse(BaseModel):
 
 
 app = FastAPI(title="Tessera Multi-Tenant RAG API")
+
+
+@app.on_event("startup")
+def _warm_reranker() -> None:
+    # Preload the cross-encoder at boot so the first question does not pay the
+    # one-time torch model load (a few seconds) inside its own request latency.
+    # The reranker caches the model, so this call primes that cache. Any failure
+    # here is non-fatal: the model will simply load lazily on first use instead.
+    try:
+        from src.rag.reranker import _get_model
+
+        _get_model()
+    except Exception:
+        pass
 
 
 @app.get("/health")
@@ -269,7 +289,13 @@ def ask(payload: AskRequest, user: tuple[int, str] = Depends(get_current_user)) 
     top_k = payload.top_k if payload.top_k else RETRIEVER_TOP_K
 
     allowed = {"auto", "vector", "web", "direct"}
-    fr = payload.force_route or "auto"
+    # Latency: for a private document KB the router almost always resolves to
+    # "vector", yet "auto" pays a full LLM round-trip just to decide that before
+    # any retrieval happens. Default the unset case to a configurable route
+    # (vector) so the common question skips that extra round-trip. Callers that
+    # genuinely need routing can still pass force_route="auto" explicitly, and
+    # setting TESSERA_DEFAULT_FORCE_ROUTE=auto restores the old behaviour.
+    fr = payload.force_route or DEFAULT_FORCE_ROUTE
     if fr not in allowed:
         fr = "auto"
 

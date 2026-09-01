@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Any
 from urllib.request import Request, urlopen
@@ -17,6 +18,65 @@ from .config import CHAT_MODEL, RETRIEVER_TOP_K, get_deepseek_api_key, get_tavil
 class RoutingDecision:
     route: str
     reason: str
+
+
+_LIVE_INFO_SIGNALS = (
+    "today",
+    "todays",
+    "latest",
+    "current price",
+    "right now",
+    "this week",
+    "this month",
+    "breaking news",
+    "news",
+    "recent",
+    "as of now",
+    "stock price",
+    "weather",
+)
+
+_LIVE_INFO_RE = re.compile(
+    r"\b(?:" + "|".join(_LIVE_INFO_SIGNALS) + r")\b",
+    re.IGNORECASE,
+)
+
+_GREETINGS = {
+    "hi",
+    "hello",
+    "hey",
+    "thanks",
+    "thank you",
+    "good morning",
+    "good evening",
+}
+
+_ARITHMETIC_ALLOWED = set("0123456789 +-*/().")
+
+
+def _is_pure_arithmetic(question: str) -> bool:
+    stripped = question.strip()
+    if not stripped:
+        return False
+    if any(ch not in _ARITHMETIC_ALLOWED for ch in stripped):
+        return False
+    has_digit = any(ch in "0123456789" for ch in stripped)
+    has_operator = any(ch in "+-*/" for ch in stripped)
+    return has_digit and has_operator
+
+
+def heuristic_route(question: str) -> RoutingDecision | None:
+    """Return a fast local routing decision when confident, otherwise None."""
+
+    if _LIVE_INFO_RE.search(question):
+        return RoutingDecision(route="web", reason="heuristic: live/current-info signal")
+
+    stripped = question.strip()
+    lowered = stripped.lower()
+    if lowered in _GREETINGS or _is_pure_arithmetic(stripped):
+        return RoutingDecision(route="direct", reason="heuristic: trivial/no-doc query")
+
+    return None
 
 
 def _safe_parse_json(text: str) -> dict[str, Any]:
@@ -69,6 +129,10 @@ def _classify_once(question: str) -> dict[str, Any]:
 
 def route_query(question: str) -> RoutingDecision:
     """Route a question to vector, web, or direct handling."""
+
+    heuristic = heuristic_route(question)
+    if heuristic is not None:
+        return heuristic
 
     for _ in range(2):
         parsed = _classify_once(question)
